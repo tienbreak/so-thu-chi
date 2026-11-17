@@ -21,6 +21,12 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<aside class="side" aria-label="Menu">
+  <div class="sbrand"><div class="logo"><span data-ic="wallet"></span></div><div><b>Sổ Thu Chi</b><small>Quản lý dòng tiền cá nhân</small></div></div>
+  <button class="sadd" data-act="add"><span data-ic="plus"></span>Thêm giao dịch</button>
+  <nav id="sideNav"></nav>
+  <div class="sfoot" id="sideFoot"></div>
+</aside>
 <div class="app">
   <header class="top" id="top"></header>
   <main id="main"></main>
@@ -58,6 +64,8 @@
     </div>
   </div>
 </div>
+
+<div class="dp" id="dp" role="dialog" aria-modal="true" aria-label="Chọn ngày"><div class="dpbox" id="dpBox"></div></div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>

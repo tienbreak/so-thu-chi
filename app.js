@@ -77,7 +77,9 @@ const P = {
   moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   contrast:'<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z" fill="currentColor"/>',
   plusc:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>',
-  chart:'<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>'
+  chart:'<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+  chevd:'<path d="m6 9 6 6 6-6"/>',
+  layers:'<path d="m12 2 10 5-10 5L2 7l10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>'
 };
 const ic = (n, s) => `<svg class="i" viewBox="0 0 24 24"${s ? ` style="width:${s}px;height:${s}px"` : ''} aria-hidden="true">${P[n] || P.more}</svg>`;
 
@@ -347,6 +349,9 @@ const PAGE_TITLES = { wallets: 'Ví & tài khoản', debts: 'Sổ nợ', recurri
 const monthNav = light => `<div class="month${light ? ' light' : ''}"><button data-act="prev" aria-label="Tháng trước">${ic('left', 18)}</button><span class="num">Tháng ${S.m + 1}/${S.y}</span><button data-act="next" aria-label="Tháng sau">${ic('right', 18)}</button></div>`;
 const emptyBox = (title, sub, icon) => `<div class="empty"><div class="ei">${ic(icon, 28)}</div><b>${title}</b>${sub}</div>`;
 const addBtn = (act, label) => `<button class="addbtn" data-act="${act}">${ic('plus')}${label}</button>`;
+const cols = (a, b) => `<div class="cols"><div class="col">${a}</div><div class="col">${b}</div></div>`;
+const mqDesk = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : null;
+const isDesk = () => !!(mqDesk && mqDesk.matches);
 const sec = (title, right) => `<div class="sec"><h2>${title}</h2>${right || ''}</div>`;
 const seg = (items, cur, act, cls) => `<div class="seg${items.length === 3 ? ' s3' : ''}${cls ? ' ' + cls : ''}">${items.map(([k, l, i, tone]) =>
   `<button class="${tone || k}${cur === k ? ' on' : ''}" data-act="${act}" data-v="${k}">${i ? ic(i) : ''}${l}</button>`).join('')}</div>`;
@@ -412,13 +417,13 @@ function viewList() {
       <div class="pill"><div class="h"><span class="ic">${ic('up')}</span><span class="t">Chi tháng ${S.m + 1}</span></div><div class="v num">${money(sumFlow(list, 'out'))}</div></div>
     </div></section>`;
   h += noticeHtml() + pendingHtml();
-  h += sec('Giao dịch', chips([['all', 'Tất cả'], ['in', 'Thu'], ['out', 'Chi']], S.filter, 'filter'));
+  let r = sec('Giao dịch', chips([['all', 'Tất cả'], ['in', 'Thu'], ['out', 'Chi']], S.filter, 'filter'));
   const rows = sortTx(list.filter(t => S.filter === 'all' || t.type === S.filter));
   if (!rows.length) {
-    h += list.length ? emptyBox('Không có giao dịch phù hợp', 'Thử chọn bộ lọc khác.', 'list')
-      : emptyBox('Chưa có giao dịch nào', 'Nhấn nút + bên dưới để ghi khoản thu hoặc chi.', 'wallet');
-  } else h += groupsHtml(rows, false);
-  return h;
+    r += list.length ? emptyBox('Không có giao dịch phù hợp', 'Thử chọn bộ lọc khác.', 'list')
+      : emptyBox('Chưa có giao dịch nào', isDesk() ? 'Bấm "Thêm giao dịch" để ghi khoản thu hoặc chi.' : 'Nhấn nút + bên dưới để ghi khoản thu hoặc chi.', 'wallet');
+  } else r += groupsHtml(rows, false);
+  return cols(h, r);
 }
 
 let gid = 0;
@@ -481,7 +486,7 @@ function flowView() {
   if (adj) steps.push({ label: 'Điều chỉnh', v: adj, color: '#98A2B3' });
   steps.push({ label: 'Cuối kỳ', v: close, total: true, color: 'var(--primary)' });
   const row = (l, v, cls, sign) => `<div class="kvrow${cls ? ' ' + cls : ''}"><span>${l}</span><span class="num">${sign ? signed(v) : money(v)}</span></div>`;
-  let h = sec('Báo cáo dòng tiền', `<span class="pct">${dm(start)} – ${dm(end < start ? start : end)}</span>`);
+  let h = `<div class="sec"><h2>Báo cáo dòng tiền</h2><span class="pct">${dm(start)} – ${dm(end < start ? start : end)}</span></div>`;
   if (future) h += `<div class="card pad"><p class="hint" style="margin:0">Tháng này chưa bắt đầu. Báo cáo sẽ có khi đến tháng.</p></div>`;
   else {
     h += `<div class="card pad wf">${waterfall(steps)}</div><div class="card" style="margin-top:10px">`
@@ -503,8 +508,7 @@ function flowView() {
       <div class="kv"><span>Thấp nhất ${dm(lo.d)}</span><b class="num ${lo.v < 0 ? 'neg' : ''}">${money(lo.v)}</b></div>
       <div class="kv"><span>Cao nhất ${dm(hi.d)}</span><b class="num">${money(hi.v)}</b></div></div>`;
   }
-  h += trendHtml() + forecastHtml();
-  return h;
+  return cols(h, trendHtml() + forecastHtml());
 }
 function forecastHtml() {
   const f = forecast();
@@ -545,12 +549,12 @@ function trendHtml() {
 function catView() {
   const type = S.statType, word = type === 'out' ? 'chi tiêu' : 'thu nhập';
   const list = monthTx(S.y, S.m).filter(t => isFlow(t) && t.type === type);
-  let h = `<div class="vgap">${chips([['out', 'Chi tiêu'], ['in', 'Thu nhập']], type, 'stat')}</div>`;
+  let h = chips([['out', 'Chi tiêu'], ['in', 'Thu nhập']], type, 'stat');
   const total = list.reduce((s, t) => s + t.amount, 0);
   const by = {};
   list.forEach(t => { by[t.cat] = (by[t.cat] || 0) + t.amount; });
   const items = Object.keys(by).map(k => ({ c: catOf(k), v: by[k] })).sort((a, b) => b.v - a.v);
-  if (!items.length) return h + emptyBox(`Chưa có ${word} trong tháng`, 'Số liệu sẽ hiển thị khi bạn thêm giao dịch.', 'pie');
+  if (!items.length) return `<div class="narrow">${h + emptyBox(`Chưa có ${word} trong tháng`, 'Số liệu sẽ hiển thị khi bạn thêm giao dịch.', 'pie')}</div>`;
   const R = 80, C = 2 * Math.PI * R;
   let off = 0, arcs = '';
   items.forEach(it => {
@@ -568,12 +572,12 @@ function catView() {
   }
   h += `<div class="card" style="margin-top:12px"><div class="donutwrap"><div class="donut"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="${R}" fill="none" style="stroke:var(--chip)" stroke-width="22"/>${arcs}</svg>
     <div class="ctr"><small>Tổng ${word}</small><strong class="num">${money(total)}</strong></div></div>${cmp}</div></div>`;
-  h += sec('Theo danh mục') + `<div class="card">${items.map(it => {
+  const list2 = `<div class="sec"><h2>Theo danh mục</h2><span class="pct">${items.length} danh mục</span></div><div class="card">${items.map(it => {
     const p = it.v / total * 100;
     return `<div class="item">${ci(it.c)}<div class="mid"><div class="top2"><span class="nm">${esc(it.c.name)} <span class="pct">${p < 1 ? '<1' : Math.round(p)}%</span></span><span class="am num">${money(it.v)}</span></div>
       <div class="bar"><i style="width:${p}%;background:${it.c.c}"></i></div></div></div>`;
   }).join('')}</div>`;
-  return h;
+  return cols(h, list2);
 }
 function calView() {
   const y = S.y, m = S.m, n = daysIn(y, m), off = (new Date(y, m, 1).getDay() + 6) % 7, today = todayStr();
@@ -592,28 +596,29 @@ function calView() {
   const top = spentDays.sort((a, b) => by[b].o - by[a].o)[0];
   const passed = ymKey(y, m) < curYm() ? n : ymKey(y, m) === curYm() ? +today.slice(8) : 0;
   const noSpend = Math.max(0, passed - spentDays.filter(k => k <= today).length);
-  let h = `<div class="card pad vgap"><div class="cal">${cells}</div>
+  let h = `<div class="card pad"><div class="cal">${cells}</div>
     <div class="legend" style="margin-top:12px"><span><i style="background:${hexA('#F04438', .55)}"></i>Chi nhiều</span><span><i style="background:${hexA('#F04438', .15)}"></i>Chi ít</span><span><i class="lgdot"></i>Có khoản thu</span></div></div>`;
   if (passed) h += `<div class="card" style="margin-top:10px">${top ? `<div class="kvrow"><span>Ngày chi nhiều nhất</span><span class="num">${dm(top)} · ${money(by[top].o)}</span></div>` : ''}
     <div class="kvrow"><span>Số ngày không chi tiêu</span><span>${noSpend}/${passed} ngày</span></div></div>`;
+  let r = '';
   if (S.calDay) {
     const rows = sortTx(list.filter(t => t.date === S.calDay));
-    h += rows.length ? `<div style="margin-top:16px">${groupsHtml(rows, false)}</div>`
-      : `<div class="dayh" style="margin-top:16px"><span>${dayLabel(S.calDay)}</span></div><div class="card pad"><p class="hint" style="margin:0">Không có giao dịch trong ngày này.</p></div>`;
-  }
-  return h;
+    r = rows.length ? `<div class="calday">${groupsHtml(rows, false)}</div>`
+      : `<div class="calday"><div class="dayh"><span>${dayLabel(S.calDay)}</span></div><div class="card pad"><p class="hint" style="margin:0">Không có giao dịch trong ngày này.</p></div></div>`;
+  } else r = `<div class="calday"><div class="card pad"><p class="hint" style="margin:0">Chạm vào một ngày trên lịch để xem các giao dịch của ngày đó.</p></div></div>`;
+  return cols(h, r);
 }
 function viewStats() {
   const sub = S.rview;
   const body = sub === 'cat' ? catView() : sub === 'cal' ? calView() : flowView();
-  return `<div class="vtop">${monthNav(true)}</div><div class="vgap">${seg([['flow', 'Dòng tiền', 'chart', 'tr'], ['cat', 'Danh mục', 'pie', 'tr'], ['cal', 'Lịch', 'cal', 'tr']], sub, 'rview')}</div>` + body;
+  return `<div class="vbar">${monthNav(true)}${seg([['flow', 'Dòng tiền', 'chart', 'tr'], ['cat', 'Danh mục', 'pie', 'tr'], ['cal', 'Lịch', 'cal', 'tr']], sub, 'rview')}</div>` + body;
 }
 
 const budgetColor = pct => pct >= 100 ? 'var(--out)' : pct >= 80 ? 'var(--amber)' : 'var(--in)';
 function viewBudget() {
   let h = `<div class="vtop">${monthNav(true)}</div>`;
   const ids = Object.keys(D.budgets).filter(id => D.categories.some(c => c.id === id && c.type === 'out'));
-  if (!ids.length) return h + emptyBox('Chưa đặt ngân sách', 'Đặt hạn mức chi mỗi tháng cho từng danh mục để kiểm soát chi tiêu.', 'target') + addBtn('budget-new', 'Đặt ngân sách');
+  if (!ids.length) return h + `<div class="narrow">${emptyBox('Chưa đặt ngân sách', 'Đặt hạn mức chi mỗi tháng cho từng danh mục để kiểm soát chi tiêu.', 'target') + addBtn('budget-new', 'Đặt ngân sách')}</div>`;
   const rows = ids.map(id => ({ c: catOf(id), limit: D.budgets[id], used: budgetUsed(id, S.y, S.m) }))
     .sort((a, b) => b.used / b.limit - a.used / a.limit);
   const limit = rows.reduce((s, r) => s + r.limit, 0), used = rows.reduce((s, r) => s + r.used, 0), left = limit - used, pct = used / limit * 100;
@@ -623,39 +628,38 @@ function viewBudget() {
     tip = left > 0 ? `<div class="tip">${ic('clock')}Còn ${dl} ngày · nên chi tối đa ${money(Math.floor(left / dl))}/ngày</div>`
       : `<div class="tip">${ic('info')}Bạn đã dùng hết ngân sách tháng này.</div>`;
   }
-  h += `<div class="card pad vgap"><div class="kv first"><span>${left >= 0 ? 'Còn có thể chi' : 'Đã vượt ngân sách'}</span><span class="badge ${pct >= 100 ? 'red' : pct >= 80 ? '' : 'green'}">${Math.round(pct)}%</span></div>
+  let a = `<div class="card pad"><div class="kv first"><span>${left >= 0 ? 'Còn có thể chi' : 'Đã vượt ngân sách'}</span><span class="badge ${pct >= 100 ? 'red' : pct >= 80 ? '' : 'green'}">${Math.round(pct)}%</span></div>
     <div class="big num ${left < 0 ? 'neg' : ''}">${money(Math.abs(left))}</div>
     <div class="prog"><i style="width:${Math.min(pct, 100)}%;background:${budgetColor(pct)}"></i></div>
-    <div class="kv"><span>Đã chi ${money(used)}</span><span>Ngân sách ${money(limit)}</span></div>${tip}</div>`;
-  h += sec('Theo danh mục') + `<div class="card">${rows.map(r => {
+    <div class="kv"><span>Đã chi ${money(used)}</span><span>Ngân sách ${money(limit)}</span></div>${tip}</div><p class="hint">Ngân sách được áp dụng giống nhau cho mọi tháng.</p>`;
+  let b = `<div class="sec bsec"><h2>Theo danh mục</h2><span class="pct">${rows.length} ngân sách</span></div><div class="card">${rows.map(r => {
     const p = r.used / r.limit * 100, l = r.limit - r.used;
     return `<button class="item" data-act="budget" data-v="${r.c.id}">${ci(r.c)}<div class="mid">
       <div class="top2"><span class="nm">${esc(r.c.name)}</span><span class="am num">${money(r.used)}</span></div>
       <div class="bar"><i style="width:${Math.min(p, 100)}%;background:${budgetColor(p)}"></i></div>
       <div class="top2 nt"><span class="${l < 0 ? 'neg' : ''}">${l >= 0 ? 'Còn ' + money(l) : 'Vượt ' + money(-l)}</span><span>/ ${money(r.limit)}</span></div></div></button>`;
   }).join('')}</div>`;
-  if (ids.length < D.categories.filter(c => c.type === 'out' && !c.hidden).length) h += addBtn('budget-new', 'Thêm ngân sách');
-  return h + `<p class="hint">Ngân sách được áp dụng giống nhau cho mọi tháng.</p>`;
+  if (ids.length < D.categories.filter(c => c.type === 'out' && !c.hidden).length) b += addBtn('budget-new', 'Thêm ngân sách');
+  return h + cols(a, b);
 }
 
 function viewMore() {
   const lend = D.debts.filter(d => d.kind === 'lend').reduce((s, d) => s + debtLeft(d), 0);
   const borrow = D.debts.filter(d => d.kind === 'borrow').reduce((s, d) => s + debtLeft(d), 0);
   const last = Store.lastBackup(), due = backupDue();
-  return `<div class="grp-t">Quản lý tiền</div><div class="card">
+  return cols(`<div class="grp-t">Quản lý tiền</div><div class="card">
     ${menuRow('page', 'wallets', { c: '#12B76A', i: 'wallet' }, 'Ví & tài khoản', `${D.wallets.length} ví · ${money(totalBalance())}`)}
     ${menuRow('page', 'debts', { c: '#0E9384', i: 'book' }, 'Sổ nợ', D.debts.length ? `Phải thu ${money(lend)} · Phải trả ${money(borrow)}` : 'Theo dõi khoản cho vay, đi vay')}
     ${menuRow('page', 'recurring', { c: '#7A5AF8', i: 'repeat' }, 'Giao dịch định kỳ', D.recurring.length ? `${D.recurring.length} khoản lặp lại hàng tháng` : 'Lương, tiền nhà, điện nước…')}
     ${menuRow('page', 'categories', { c: '#F79009', i: 'tag' }, 'Danh mục', `${D.categories.filter(c => !c.hidden).length} danh mục đang dùng`)}
-  </div>
-  <div class="grp-t">Dữ liệu</div><div class="card">
+  </div>`, `<div class="grp-t">Dữ liệu</div><div class="card">
     ${menuRow('page', 'log', { c: '#E04F16', i: 'history' }, 'Nhật ký thay đổi', LOG.length ? `${LOG.length} thay đổi gần nhất` : 'Ghi lại mọi lần thêm, sửa, xóa')}
     ${menuRow('page', 'backup', { c: '#2E90FA', i: 'db' }, 'Sao lưu & khôi phục', last ? 'Lần gần nhất ' + dmy(ymd(new Date(last))) : 'Chưa sao lưu lần nào', due ? '<span class="badge red">Nên sao lưu</span>' : '')}
   </div>
   <div class="grp-t">Cài đặt</div><div class="card">
     ${menuRow('theme', '', { c: '#4F46E5', i: THEMES[themePref()].i }, 'Giao diện', THEMES[themePref()].name)}
   </div>
-  <p class="foot">Sổ Thu Chi · phiên bản 2.1<br>Dữ liệu chỉ lưu trên điện thoại này</p>`;
+  <p class="foot">Sổ Thu Chi · phiên bản 2.2<br>Dữ liệu chỉ lưu trên thiết bị này</p>`);
 }
 
 /* =========================================================
@@ -682,12 +686,12 @@ function pageLedger() {
   let h = `<div class="card pad"><div class="kv first"><span>Số dư hiện tại</span>${ci(w, 16).replace('class="ci"', 'class="ci sm"')}</div><div class="big num">${money(walletBalance(w))}</div>
     <div class="kv"><span>${w.reconciledAt ? 'Đối soát lần cuối ' + dmy(w.reconciledAt) : 'Chưa đối soát lần nào'}</span></div>
     <div class="btnrow"><button class="btn pri sm" data-act="recon">${ic('scale', 18)}Đối soát số dư</button><button class="btn sec2 sm" data-act="wallet-edit">Sửa ví</button></div></div>`;
-  h += `<div class="vtop" style="margin-top:18px">${monthNav(true)}</div>`;
-  h += `<div class="card" style="margin-top:12px"><div class="kvrow strong"><span>${isCur ? 'Số dư đến nay' : 'Số dư cuối tháng'}</span><span class="num">${money(run)}</span></div>`;
-  h += lines.length ? lines.map(l => ledgerRow(l, w.id)).join('') : `<div class="item"><p class="hint" style="margin:0">Không có giao dịch nào của ví trong tháng này.</p></div>`;
-  h += `<div class="kvrow strong"><span>Số dư đầu tháng</span><span class="num">${money(open)}</span></div></div>`;
-  if (lines.length) h += `<p class="hint">Trong tháng: tiền vào <b class="pos num">+${fmt(inSum)} ₫</b>, tiền ra <b class="neg num">−${fmt(outSum)} ₫</b>. Đầu tháng + vào − ra = cuối tháng.</p>`;
-  return h;
+  let r = `<div class="vtop ltop">${monthNav(true)}</div>`;
+  r += `<div class="card"><div class="kvrow strong"><span>${isCur ? 'Số dư đến nay' : 'Số dư cuối tháng'}</span><span class="num">${money(run)}</span></div>`;
+  r += lines.length ? lines.map(l => ledgerRow(l, w.id)).join('') : `<div class="item"><p class="hint" style="margin:0">Không có giao dịch nào của ví trong tháng này.</p></div>`;
+  r += `<div class="kvrow strong"><span>Số dư đầu tháng</span><span class="num">${money(open)}</span></div></div>`;
+  if (lines.length) r += `<p class="hint">Trong tháng: tiền vào <b class="pos num">+${fmt(inSum)} ₫</b>, tiền ra <b class="neg num">−${fmt(outSum)} ₫</b>. Đầu tháng + vào − ra = cuối tháng.</p>`;
+  return cols(h, r);
 }
 function ledgerRow(l, wid) {
   const t = l.t, c = t.type === 'transfer' ? SYS.transfer : catOf(t.cat);
@@ -813,15 +817,36 @@ function updateSearch() {
    11. RENDER
    ========================================================= */
 const VIEWS = { list: viewList, stats: viewStats, budget: viewBudget, more: viewMore };
+const VIEW_TITLES = { list: 'Giao dịch', stats: 'Thống kê', budget: 'Ngân sách', more: 'Thêm' };
+const WIDE_PAGES = ['ledger'];
+/* Thanh menu bên trái (chỉ hiện trên máy tính) */
+const SIDE = [
+  ['', [['tab', 'list', 'list', 'Giao dịch'], ['tab', 'stats', 'pie', 'Thống kê'], ['tab', 'budget', 'target', 'Ngân sách']]],
+  ['Quản lý tiền', [['side', 'wallets', 'wallet', 'Ví & tài khoản'], ['side', 'debts', 'book', 'Sổ nợ'], ['side', 'recurring', 'repeat', 'Giao dịch định kỳ'], ['side', 'categories', 'tag', 'Danh mục']]],
+  ['Dữ liệu', [['side', 'log', 'history', 'Nhật ký thay đổi'], ['side', 'backup', 'db', 'Sao lưu & khôi phục'], ['theme', '', 'contrast', 'Giao diện']]]
+];
+function renderSide() {
+  if (!isDesk()) return;
+  const root = S.stack[0];
+  $('sideNav').innerHTML = SIDE.map(([g, items]) => (g ? `<div class="sgrp">${g}</div>` : '') + items.map(([act, v, i, t]) => {
+    const on = act === 'tab' ? (!S.stack.length && S.view === v) || (S.stack.length && S.view === v && !S.sideRoot) : act === 'side' && root === v && S.sideRoot;
+    const dot = v === 'backup' && backupDue();
+    return `<button class="slink${on ? ' on' : ''}" data-act="${act}"${v ? ` data-v="${v}"` : ''}>${ic(act === 'theme' ? THEMES[themePref()].i : i)}${t}${dot ? '<i class="sdot"></i>' : ''}</button>`;
+  }).join('')).join('');
+  $('sideFoot').innerHTML = `<button class="sbal" data-act="side" data-v="wallets" style="width:100%;text-align:left"><small>Tổng số dư · ${D.wallets.length} ví</small><b class="num">${money(totalBalance())}</b></button>`;
+}
 const PAGES = { wallets: pageWallets, debts: pageDebts, recurring: pageRecurring, categories: pageCategories, backup: pageBackup, ledger: pageLedger, log: pageLog };
 function render() {
   const pg = curPage(), title = pg && (typeof PAGE_TITLES[pg] === 'function' ? PAGE_TITLES[pg]() : PAGE_TITLES[pg]);
+  const searchBtn = `<button class="hicon" data-act="page" data-v="search" aria-label="Tìm kiếm giao dịch">${ic('search')}</button>`;
+  const showBack = pg && !(isDesk() && S.sideRoot && S.stack.length === 1);
   $('top').innerHTML = pg
-    ? `<div class="pghd"><button class="hicon" data-act="back" aria-label="Quay lại">${ic('left')}</button><h1>${esc(title)}</h1></div>`
-    : `<div class="brand"><div class="logo">${ic('wallet', 20)}</div><h1>Sổ Thu Chi</h1></div><button class="hicon" data-act="page" data-v="search" aria-label="Tìm kiếm giao dịch">${ic('search')}</button>`;
+    ? `<div class="pghd">${showBack ? `<button class="hicon" data-act="back" aria-label="Quay lại">${ic('left')}</button>` : ''}<h1${showBack ? '' : ' class="ptitle"'}>${esc(title)}</h1></div>${pg !== 'search' && isDesk() ? searchBtn : ''}`
+    : `<div class="brand"><div class="logo">${ic('wallet', 20)}</div><h1>Sổ Thu Chi</h1></div><h1 class="ptitle">${VIEW_TITLES[S.view]}</h1>${searchBtn}`;
   const main = $('main');
-  if (pg === 'search') { if (!$('sq')) main.innerHTML = searchFrame(); updateSearch(); }
-  else main.innerHTML = pg ? PAGES[pg]() : VIEWS[S.view]();
+  if (pg === 'search') { if (!$('sq')) main.innerHTML = `<div class="narrow">${searchFrame()}</div>`; updateSearch(); }
+  else main.innerHTML = pg ? (WIDE_PAGES.includes(pg) ? PAGES[pg]() : `<div class="narrow">${PAGES[pg]()}</div>`) : VIEWS[S.view]();
+  renderSide();
   ['list', 'stats', 'budget', 'more'].forEach(v => $('t-' + v).classList.toggle('on', S.view === v));
   $('t-more').classList.toggle('warn', backupDue());
 }
@@ -843,6 +868,7 @@ function drawForm() {
   $('shFoot').innerHTML = ft; $('shFoot').style.display = ft ? '' : 'none';
 }
 function closeSheet() {
+  closeDate();
   $('overlay').classList.remove('show'); $('sheet').classList.remove('show');
   document.body.style.overflow = ''; F = null;
   try { document.activeElement && document.activeElement.blur(); } catch (e) {}
@@ -863,7 +889,15 @@ const quickRow = list => `<div class="quick">${list.map(([v, l]) => `<button dat
 const QUICK_TX = [[10000, '+10K'], [50000, '+50K'], [100000, '+100K'], [200000, '+200K'], [500000, '+500K']];
 const QUICK_BIG = [[100000, '+100K'], [500000, '+500K'], [1000000, '+1 triệu'], [5000000, '+5 triệu']];
 const textField = (k, val, ph, icon, max) => `<label class="field">${ic(icon, 18)}<input data-f="${k}" type="text" maxlength="${max || 120}" placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
-const dateField = (k, val, label, icon) => `<label class="field">${ic(icon || 'cal', 18)}${label ? `<span class="fl">${label}</span>` : ''}<input data-f="${k}" type="date" value="${val || ''}" aria-label="${label || 'Ngày'}"></label>`;
+/* Ô chọn ngày: mở bộ chọn ngày riêng của app (không dùng lịch mặc định của trình duyệt) */
+function longDate(ds) {
+  if (!ds) return '';
+  const d = new Date(+ds.slice(0, 4), +ds.slice(5, 7) - 1, +ds.slice(8)), t = todayStr();
+  const pre = ds === t ? 'Hôm nay' : ds === addDays(t, -1) ? 'Hôm qua' : ds === addDays(t, 1) ? 'Ngày mai' : WD[d.getDay()];
+  return `${pre}, ${dmy(ds)}`;
+}
+const dateField = (k, val, label, icon, optional) => `<button type="button" class="field dfield" data-act="dp-open" data-k="${k}"${optional ? ' data-opt="1"' : ''} aria-label="${label || 'Chọn ngày'}">${ic(icon || 'cal', 18)}${label ? `<span class="fl">${label}</span>` : ''}<span class="dval${val ? '' : ' ph'}" id="dv-${k}">${val ? longDate(val) : 'Chưa chọn'}</span>${ic('chevd', 18)}</button>`;
+const domField = (k, day) => `<button type="button" class="field dfield" data-act="dp-open" data-k="${k}" data-mode="dom" aria-label="Ngày trong tháng">${ic('cal', 18)}<span class="dval" id="dv-${k}">Ngày ${day} hàng tháng</span>${ic('chevd', 18)}</button>`;
 const catGrid = (type, sel, exclude) => {
   const cats = D.categories.filter(c => c.type === type && (!c.hidden || c.id === sel) && !(exclude || []).includes(c.id));
   if (!cats.length) return '<p class="hint">Không còn danh mục nào để chọn. Vào Thêm › Danh mục để tạo mới hoặc hiện lại danh mục đã ẩn.</p>';
@@ -910,9 +944,7 @@ function txBody() {
   }
   h += flabel('Chi tiết') + textField('note', v.note, 'Ghi chú (không bắt buộc)', 'pen');
   if (recur) {
-    let opts = '';
-    for (let d = 1; d <= 31; d++) opts += `<option value="${d}"${+v.day === d ? ' selected' : ''}>Ngày ${d} hàng tháng${d > 28 ? ' (hoặc cuối tháng)' : ''}</option>`;
-    h += `<label class="field">${ic('cal', 18)}<select data-f="day" aria-label="Ngày trong tháng">${opts}</select></label>`;
+    h += domField('day', v.day);
   } else {
     h += dateField('date', v.date);
     if (!F.id && !F.occ && !tr) h += `<button class="swrow" data-act="f-repeat" role="switch" aria-checked="${v.repeat}"><span>${ic('repeat')}Lặp lại hàng tháng</span><span class="sw${v.repeat ? ' on' : ''}"></span></button>`;
@@ -1077,7 +1109,7 @@ function debtForm(d) {
       h += amountField(v.amount, 'tr', e.amount) + quickRow(QUICK_BIG);
       h += flabel(lend ? 'Người vay' : 'Người cho vay') + textField('person', v.person, 'Tên người', 'user', 60) + errEl('person', 'Vui lòng nhập tên người', e.person);
       if (D.wallets.length > 1) h += flabel(lend ? 'Lấy tiền từ ví' : 'Nhận tiền vào ví') + walletChips(v.wallet, 'f-wallet');
-      h += flabel('Chi tiết') + dateField('date', v.date, lend ? 'Ngày cho vay' : 'Ngày vay') + dateField('due', v.due, 'Hạn trả', 'clock')
+      h += flabel('Chi tiết') + dateField('date', v.date, lend ? 'Ngày cho vay' : 'Ngày vay') + dateField('due', v.due, 'Hạn trả', 'clock', true)
         + textField('note', v.note, 'Ghi chú (không bắt buộc)', 'pen');
       return h;
     },
@@ -1268,6 +1300,58 @@ function themeForm() {
 }
 
 /* =========================================================
+   12b. BỘ CHỌN NGÀY (dùng chung cho mọi ô ngày)
+   ========================================================= */
+const DP = { k: null, mode: 'day', y: 0, m: 0, opt: false };
+const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+function openDate(b) {
+  const k = b.dataset.k, v = F.v[k];
+  DP.k = k; DP.opt = !!b.dataset.opt; DP.mode = b.dataset.mode || 'day';
+  const base = DP.mode === 'day' && RE_D.test(v || '') ? v : todayStr();
+  DP.y = +base.slice(0, 4); DP.m = +base.slice(5, 7) - 1;
+  drawDate(); $('dp').classList.add('show');
+}
+function closeDate() { $('dp').classList.remove('show'); DP.k = null; }
+function drawDate() {
+  const sel = F && F.v[DP.k], today = todayStr();
+  let h = '';
+  if (DP.mode === 'dom') {
+    h = `<div class="dphd"><b>Ngày trong tháng</b></div><div class="cal pick dom">`;
+    for (let d = 1; d <= 31; d++) h += `<button class="cday${+sel === d ? ' sel' : ''}" data-act="dp-dom" data-v="${d}"><span class="dn">${d}</span></button>`;
+    h += `</div><p class="hint" style="margin:12px 2px 0">Tháng nào không có ngày 29, 30, 31 sẽ nhắc vào ngày cuối tháng.</p>`;
+  } else if (DP.mode === 'month') {
+    h = `<div class="dphd"><button class="dpnav" data-act="dp-prev" aria-label="Năm trước">${ic('left', 18)}</button><button class="dptitle" data-act="dp-mode">Năm ${DP.y}${ic('chevd', 16)}</button><button class="dpnav" data-act="dp-next" aria-label="Năm sau">${ic('right', 18)}</button></div><div class="mgrid">`;
+    MONTHS.forEach((n, i) => {
+      const isSel = sel && +sel.slice(0, 4) === DP.y && +sel.slice(5, 7) - 1 === i, isNow = +today.slice(0, 4) === DP.y && +today.slice(5, 7) - 1 === i;
+      h += `<button class="mcell${isSel ? ' sel' : ''}${isNow ? ' now' : ''}" data-act="dp-month" data-v="${i}">${n}</button>`;
+    });
+    h += '</div>';
+  } else {
+    const n = daysIn(DP.y, DP.m), off = (new Date(DP.y, DP.m, 1).getDay() + 6) % 7;
+    h = `<div class="dphd"><button class="dpnav" data-act="dp-prev" aria-label="Tháng trước">${ic('left', 18)}</button><button class="dptitle" data-act="dp-mode">${MONTHS[DP.m]}, ${DP.y}${ic('chevd', 16)}</button><button class="dpnav" data-act="dp-next" aria-label="Tháng sau">${ic('right', 18)}</button></div>`;
+    h += `<div class="cal pick">${['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => `<div class="cwd">${d}</div>`).join('')}`;
+    const pm = DP.m === 0 ? 11 : DP.m - 1, py = DP.m === 0 ? DP.y - 1 : DP.y, pn = daysIn(py, pm);
+    const cell = (ds, d, other) => `<button class="cday${other ? ' other' : ''}${ds === today ? ' today' : ''}${ds === sel ? ' sel' : ''}" data-act="dp-day" data-v="${ds}"><span class="dn">${d}</span></button>`;
+    for (let i = off; i > 0; i--) { const d = pn - i + 1; h += cell(`${ymKey(py, pm)}-${pad(d)}`, d, true); }
+    for (let d = 1; d <= n; d++) h += cell(`${ymKey(DP.y, DP.m)}-${pad(d)}`, d, false);
+    const tail = (7 - (off + n) % 7) % 7, nm = DP.m === 11 ? 0 : DP.m + 1, ny = DP.m === 11 ? DP.y + 1 : DP.y;
+    for (let d = 1; d <= tail; d++) h += cell(`${ymKey(ny, nm)}-${pad(d)}`, d, true);
+    h += `</div><div class="dpft">${DP.opt ? `<button class="dpbtn gh" data-act="dp-clear">Xóa ngày</button>` : '<span></span>'}<div class="dpq"><button class="dpbtn gh" data-act="dp-shift" data-v="-1">Hôm qua</button><button class="dpbtn" data-act="dp-shift" data-v="0">Hôm nay</button></div></div>`;
+  }
+  $('dpBox').innerHTML = h;
+}
+function pickDate(val) {
+  const k = DP.k; if (!F || !k) return closeDate();
+  F.v[k] = val;
+  const el = $('dv-' + k);
+  if (el) { el.textContent = k === 'day' ? `Ngày ${val} hàng tháng` : (val ? longDate(val) : 'Chưa chọn'); el.classList.toggle('ph', !val); }
+  if (F.err && F.err[k]) { delete F.err[k]; const er = $('err-' + k); if (er) er.classList.remove('show'); }
+  if (F.live) F.live();
+  closeDate();
+}
+$('dp').addEventListener('click', e => { if (e.target.id === 'dp') closeDate(); });
+
+/* =========================================================
    13. HỘP XÁC NHẬN & THÔNG BÁO NHANH
    ========================================================= */
 let dlgResolve = null;
@@ -1348,15 +1432,16 @@ const ACT = {
   prev() { if (S.m === 0) { S.m = 11; S.y--; } else S.m--; render(); },
   next() { if (S.m === 11) { S.m = 0; S.y++; } else S.m++; render(); },
   pickm(b) { const [y, m] = b.dataset.v.split('-').map(Number); S.y = y; S.m = m; render(); },
-  tab(b) { go(() => { S.view = b.dataset.v; S.stack = []; render(); }); },
-  page(b) { go(() => { S.stack.push(b.dataset.v); render(); }); if (b.dataset.v === 'search') setTimeout(() => { try { $('sq').focus(); } catch (e) {} }, 60); },
-  back() { go(() => { S.stack.pop(); render(); }); },
+  tab(b) { go(() => { S.view = b.dataset.v; S.stack = []; S.sideRoot = false; render(); }); },
+  side(b) { go(() => { S.view = 'more'; S.stack = [b.dataset.v]; S.sideRoot = true; render(); }); },
+  page(b) { go(() => { if (!S.stack.length) S.sideRoot = false; S.stack.push(b.dataset.v); render(); }); if (b.dataset.v === 'search') setTimeout(() => { try { $('sq').focus(); } catch (e) {} }, 60); },
+  back() { go(() => { S.stack.pop(); if (!S.stack.length) S.sideRoot = false; render(); }); },
   ledger(b) { S.walletId = b.dataset.v; go(() => { S.stack.push('ledger'); render(); }); },
   'wallet-edit'() { const w = D.wallets.find(x => x.id === S.walletId); if (w) openForm(walletForm(w)); },
   recon() { if (D.wallets.some(x => x.id === S.walletId)) { openForm(reconForm(S.walletId)); focusAmount('actual'); } },
   rview(b) { S.rview = b.dataset.v; render(); },
   calday(b) { S.calDay = b.dataset.v; render(); },
-  goforecast() { S.view = 'stats'; S.rview = 'flow'; S.stack = []; render(); setTimeout(() => { const el = $('forecast'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 50); },
+  goforecast() { S.view = 'stats'; S.rview = 'flow'; S.stack = []; S.sideRoot = false; render(); setTimeout(() => { const el = $('forecast'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 50); },
   logitem(b) { const e = LOG.find(x => x.id === b.dataset.id); if (e) openForm(logDetail(e)); },
   theme() { openForm(themeForm()); },
   'theme-set'(b) { try { localStorage.setItem(KEY_THEME, b.dataset.v); } catch (e) {} applyTheme(); drawForm(); render(); },
@@ -1421,6 +1506,15 @@ const ACT = {
   'f-quick'(b) { setAmount(Math.min((F.v.amount || 0) + Number(b.dataset.v), 9999999999999)); },
   'f-set'(b) { setAmount(Number(b.dataset.v)); },
   'f-save'() { F.save(); },
+  'dp-open'(b) { openDate(b); },
+  'dp-prev'() { if (DP.mode === 'month') DP.y--; else if (DP.m === 0) { DP.m = 11; DP.y--; } else DP.m--; drawDate(); },
+  'dp-next'() { if (DP.mode === 'month') DP.y++; else if (DP.m === 11) { DP.m = 0; DP.y++; } else DP.m++; drawDate(); },
+  'dp-mode'() { DP.mode = DP.mode === 'month' ? 'day' : 'month'; drawDate(); },
+  'dp-month'(b) { DP.m = +b.dataset.v; DP.mode = 'day'; drawDate(); },
+  'dp-day'(b) { pickDate(b.dataset.v); },
+  'dp-shift'(b) { pickDate(addDays(todayStr(), +b.dataset.v)); },
+  'dp-clear'() { pickDate(''); },
+  'dp-dom'(b) { pickDate(+b.dataset.v); },
   'f-del'() { F.del(); }
 };
 function setAmount(n) {
@@ -1433,7 +1527,7 @@ document.addEventListener('click', e => {
   if (!b) return;
   const fn = ACT[b.dataset.act];
   if (!fn) return;
-  if (b.dataset.act.startsWith('f-') || ['debt-edit', 'debt-pay', 'debt-del'].includes(b.dataset.act)) { if (!F) return; }
+  if (/^(f-|dp-)/.test(b.dataset.act) || ['debt-edit', 'debt-pay', 'debt-del'].includes(b.dataset.act)) { if (!F) return; }
   fn(b);
 });
 function onField(e) {
@@ -1453,7 +1547,7 @@ function onField(e) {
 document.addEventListener('input', onField);
 document.addEventListener('change', onField);
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if ($('dlg').classList.contains('show')) closeDlg(false); else closeSheet(); return; }
+  if (e.key === 'Escape') { if ($('dlg').classList.contains('show')) closeDlg(false); else if ($('dp').classList.contains('show')) closeDate(); else closeSheet(); return; }
   if (e.key === 'Enter' && F && e.target.dataset && e.target.dataset.f && e.target.type === 'text' && !e.target.classList.contains('money')) { e.preventDefault(); F.save(); }
 });
 $('fileIn').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) importFile(f); e.target.value = ''; });
@@ -1463,6 +1557,7 @@ $('fileIn').addEventListener('change', e => { const f = e.target.files && e.targ
    ========================================================= */
 document.querySelectorAll('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 applyTheme();
+if (mqDesk) { const f = () => render(); mqDesk.addEventListener ? mqDesk.addEventListener('change', f) : mqDesk.addListener(f); }
 Store.load();
 render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

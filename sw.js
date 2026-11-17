@@ -1,5 +1,5 @@
 /* Sổ Thu Chi – cho phép mở app khi không có mạng. Đổi số phiên bản khi cập nhật app. */
-const CACHE = 'sothuchi-v3';
+const CACHE = 'sothuchi-v4';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
