@@ -4,10 +4,10 @@
   --primary:#4F46E5;--in:#12B76A;--out:#F04438;--amber:#F79009;--navbg:rgba(255,255,255,.88);
   --grad:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);
 }
-@media (prefers-color-scheme: dark){
-  :root{--bg:#0B0D12;--card:#161A22;--text:#F2F4F7;--muted:#98A2B3;--line:#252B36;--chip:#1F2430;
-    --primary:#818CF8;--in:#32D583;--out:#F97066;--amber:#FDB022;--navbg:rgba(22,26,34,.88);}
-}
+:root{color-scheme:light}
+/* Giao diện tối: bật theo lựa chọn trong app (Tự động / Sáng / Tối) */
+:root[data-theme=dark]{--bg:#0B0D12;--card:#161A22;--text:#F2F4F7;--muted:#98A2B3;--line:#252B36;--chip:#1F2430;
+  --primary:#818CF8;--in:#32D583;--out:#F97066;--amber:#FDB022;--navbg:rgba(22,26,34,.88);color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{font-family:'Be Vietnam Pro',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);
@@ -237,3 +237,34 @@ button.item:active{background:var(--chip)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translate(-50%,20px);opacity:0;z-index:70;background:var(--text);color:var(--bg);
   padding:10px 16px;border-radius:12px;font-size:13.5px;font-weight:500;transition:all .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ===== v2.1: dòng tiền & minh bạch ===== */
+.notice.warn{border-color:rgba(240,68,56,.35);background:rgba(240,68,56,.06)}
+.notice.warn .i{color:var(--out)}
+.notice b{color:var(--text)}
+.ci.sm{width:28px;height:28px;border-radius:9px}
+.btnrow{display:flex;gap:10px;margin-top:14px}
+.btn.sm{height:44px;font-size:15px;border-radius:12px}
+.btn.sm .i{width:18px;height:18px}
+.rt{text-align:right;flex:none}
+.rt .nt{margin-top:2px}
+.kvrow.strong span{font-weight:700;color:var(--text)}
+.kvrow.strong{background:var(--chip)}
+.kvrow.pos span:last-child{color:var(--in)}.kvrow.neg span:last-child{color:var(--out)}
+.kvrow.head span{font-size:12px;font-weight:600;color:var(--muted)}
+s.old{color:var(--muted);text-decoration-color:var(--out)}
+.recdiff{min-height:22px;margin-top:10px;font-size:14px;font-weight:500}
+.recdiff span{display:inline-flex;align-items:center;gap:6px}
+.recdiff .i{width:16px;height:16px}
+.wf svg,.card.pad>svg{width:100%;height:auto;display:block}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cwd{text-align:center;font-size:11.5px;font-weight:600;color:var(--muted);padding:2px 0 6px}
+.cday{position:relative;aspect-ratio:1/1.05;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1.5px solid transparent;min-width:0;transition:border-color .15s}
+.cday .dn{font-size:13.5px;font-weight:600;line-height:1}
+.cday .dv{font-size:9.5px;font-weight:600;color:var(--out);line-height:1.1;max-width:100%;overflow:hidden;white-space:nowrap}
+.cday.fut .dn{color:var(--muted);font-weight:500}
+.cday.today .dn{color:var(--primary)}
+.cday.today{box-shadow:inset 0 0 0 1.5px var(--primary)}
+.cday.sel{border-color:var(--text)}
+.cdot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--in)}
+.legend .lgdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--in);margin-right:6px;vertical-align:0}

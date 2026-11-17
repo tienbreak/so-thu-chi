@@ -70,7 +70,14 @@ const P = {
   db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
   dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   ul:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
-  eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
+  eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  scale:'<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+  history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  contrast:'<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z" fill="currentColor"/>',
+  plusc:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>',
+  chart:'<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>'
 };
 const ic = (n, s) => `<svg class="i" viewBox="0 0 24 24"${s ? ` style="width:${s}px;height:${s}px"` : ''} aria-hidden="true">${P[n] || P.more}</svg>`;
 
@@ -92,6 +99,17 @@ const curYm = () => todayStr().slice(0, 7);
 const dmy = s => s ? `${s.slice(8)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '';
 const dm = s => `${s.slice(8)}/${s.slice(5, 7)}`;
 const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+const addDays = (ds, n) => { const d = new Date(+ds.slice(0, 4), +ds.slice(5, 7) - 1, +ds.slice(8) + n); return ymd(d); };
+const hm = ms => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+/* Số gọn cho biểu đồ: 850k, 1,2tr, 25tr, 1,5 tỷ */
+function short(n) {
+  const a = Math.abs(n); let s;
+  if (a >= 1e9) s = (a / 1e9).toFixed(a >= 1e10 ? 0 : 1) + ' tỷ';
+  else if (a >= 999500) s = (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'tr';
+  else if (a >= 1000) s = Math.round(a / 1000) + 'k';
+  else s = String(Math.round(a));
+  return (n < 0 ? '−' : '') + s.replace('.0', '').replace('.', ',');
+}
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
 const nrm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
@@ -116,6 +134,7 @@ const SYS = {
   sys_borrow: { id:'sys_borrow', name:'Đi vay',      c:'#DD2590', i:'inbox' },
   sys_collect:{ id:'sys_collect',name:'Thu nợ',      c:'#0E9384', i:'coins' },
   sys_repay:  { id:'sys_repay',  name:'Trả nợ',      c:'#DD2590', i:'checkc' },
+  sys_adjust: { id:'sys_adjust', name:'Điều chỉnh số dư', c:'#667085', i:'scale' },
   transfer:   { id:'transfer',   name:'Chuyển tiền', c:'#4F46E5', i:'swap' }
 };
 const CAT_ICONS = ['utensils','coffee','car','fuel','plane','bag','shirt','receipt','zap','droplet','wifi','phone','home','heart','pill','game','film','music',
@@ -132,7 +151,7 @@ const str = (v, max) => typeof v === 'string' ? v.slice(0, max || 120) : '';
 const posNum = v => typeof v === 'number' && isFinite(v) && v > 0;
 const vWallet = w => w && RE_ID.test(w.id) && str(w.name, 40).trim() && {
   id: w.id, name: str(w.name, 40).trim(), i: P[w.i] ? w.i : 'wallet', c: RE_HEX.test(w.c) ? w.c : '#12B76A',
-  initial: Number.isFinite(w.initial) ? Math.max(0, Math.round(w.initial)) : 0 };
+  initial: Number.isFinite(w.initial) ? Math.max(0, Math.round(w.initial)) : 0, reconciledAt: RE_D.test(w.reconciledAt || '') ? w.reconciledAt : undefined };
 const vCat = c => c && RE_ID.test(c.id) && !SYS[c.id] && (c.type === 'in' || c.type === 'out') && str(c.name, 30).trim() && {
   id: c.id, type: c.type, name: str(c.name, 30).trim(), c: RE_HEX.test(c.c) ? c.c : '#667085', i: P[c.i] ? c.i : 'more', hidden: !!c.hidden };
 const vTx = t => t && RE_ID.test(t.id) && ['in','out','transfer'].includes(t.type) && posNum(t.amount) && RE_D.test(t.date) && typeof t.wallet === 'string'
@@ -163,7 +182,9 @@ function ensureBasics() {
 /* =========================================================
    5. LƯU TRỮ
    ========================================================= */
-const KEY = 'sothuchi.v2', KEY_V1 = 'sothuchi.v1', KEY_BK = 'sothuchi.lastBackup';
+const KEY = 'sothuchi.v2', KEY_V1 = 'sothuchi.v1', KEY_BK = 'sothuchi.lastBackup', KEY_LOG = 'sothuchi.log', KEY_THEME = 'sothuchi.theme';
+let LOG = [];
+const LOG_MAX = 500;
 const Store = {
   ok: true,
   load() {
@@ -181,7 +202,14 @@ const Store = {
       } catch (e) {}
       if (this.ok) this.save();
     }
+    try { const l = JSON.parse(localStorage.getItem(KEY_LOG) || '[]'); if (Array.isArray(l)) LOG = l.filter(x => x && x.at && x.kind).slice(0, LOG_MAX); } catch (e) {}
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  },
+  saveLog() {
+    for (let i = 0; i < 3; i++) {
+      try { localStorage.setItem(KEY_LOG, JSON.stringify(LOG)); return; }
+      catch (e) { LOG = LOG.slice(0, Math.floor(LOG.length / 2)); }
+    }
   },
   save() {
     try { localStorage.setItem(KEY, JSON.stringify(D)); this.ok = true; return true; }
@@ -191,13 +219,42 @@ const Store = {
   markBackup() { try { localStorage.setItem(KEY_BK, String(Date.now())); } catch (e) {} }
 };
 function restore(snap) { const o = JSON.parse(snap); Object.keys(D).forEach(k => { D[k] = o[k]; }); }
-/* Mọi thay đổi dữ liệu đi qua commit: lưu thất bại thì hoàn tác */
-function commit(fn) {
+/* Mọi thay đổi dữ liệu đi qua commit: lưu thất bại thì hoàn tác; lưu thành công thì ghi nhật ký */
+function commit(fn, opts) {
   const snap = JSON.stringify(D);
   fn();
   if (!Store.save()) { restore(snap); toast('Không lưu được: bộ nhớ trình duyệt bị chặn hoặc đã đầy'); return false; }
+  writeLog(JSON.parse(snap), opts || {});
   render();
   return true;
+}
+/* Nhật ký: tự so sánh dữ liệu trước/sau mỗi lần lưu (bỏ qua trường kỹ thuật) */
+const LOG_KINDS = ['tx', 'wallets', 'categories', 'recurring', 'debts'];
+const LOG_OMIT = { wallets: ['reconciledAt'], recurring: ['done'] };
+const cmpKey = (kind, x) => { if (!LOG_OMIT[kind]) return JSON.stringify(x); const c = Object.assign({}, x); LOG_OMIT[kind].forEach(k => delete c[k]); return JSON.stringify(c); };
+function writeLog(prev, opts) {
+  const at = Date.now(), out = [];
+  if (opts.summary) out.push({ id: newId(), at, op: 'import', kind: 'data', text: typeof opts.summary === 'function' ? opts.summary() : opts.summary });
+  else {
+    LOG_KINDS.forEach(kind => {
+      const b = new Map((prev[kind] || []).map(x => [x.id, x])), a = new Map(D[kind].map(x => [x.id, x]));
+      a.forEach((x, id) => {
+        if (!b.has(id)) out.push({ id: newId(), at, op: 'add', kind, after: x });
+        else if (cmpKey(kind, b.get(id)) !== cmpKey(kind, x)) out.push({ id: newId(), at, op: 'edit', kind, before: b.get(id), after: x });
+      });
+      b.forEach((x, id) => { if (!a.has(id)) out.push({ id: newId(), at, op: 'del', kind, before: x }); });
+    });
+    const pb = prev.budgets || {};
+    new Set(Object.keys(pb).concat(Object.keys(D.budgets))).forEach(cat => {
+      const o = pb[cat], n = D.budgets[cat];
+      if (o === n) return;
+      out.push({ id: newId(), at, kind: 'budgets', op: o == null ? 'add' : n == null ? 'del' : 'edit',
+        before: o == null ? undefined : { cat, amount: o }, after: n == null ? undefined : { cat, amount: n } });
+    });
+  }
+  if (!out.length) return;
+  LOG = out.reverse().concat(LOG).slice(0, LOG_MAX);
+  Store.saveLog();
 }
 function upsert(list, item) { const i = list.findIndex(x => x.id === item.id); if (i >= 0) list[i] = item; else list.push(item); }
 
@@ -209,15 +266,49 @@ const walletOf = id => D.wallets.find(w => w.id === id) || { id, name: 'Ví đã
 const isFlow = t => t.type !== 'transfer' && !SYS[t.cat];
 const monthTx = (y, m) => { const k = ymKey(y, m); return D.tx.filter(t => t.date.slice(0, 7) === k); };
 const sumFlow = (list, type) => list.reduce((s, t) => s + (t.type === type && isFlow(t) ? t.amount : 0), 0);
-function walletBalance(w) {
-  let b = w.initial || 0;
-  for (const t of D.tx) {
-    if (t.type === 'transfer') { if (t.wallet === w.id) b -= t.amount; if (t.toWallet === w.id) b += t.amount; }
-    else if (t.wallet === w.id) b += t.type === 'in' ? t.amount : -t.amount;
-  }
-  return b;
+/* Ảnh hưởng của 1 giao dịch lên số dư (một ví, hoặc tổng tất cả ví khi không truyền wid) */
+function txDelta(t, wid) {
+  if (t.type === 'transfer') return wid ? (t.toWallet === wid ? t.amount : 0) - (t.wallet === wid ? t.amount : 0) : 0;
+  if (wid && t.wallet !== wid) return 0;
+  return t.type === 'in' ? t.amount : -t.amount;
 }
-const totalBalance = () => D.wallets.reduce((s, w) => s + walletBalance(w), 0);
+const initialOf = wid => wid ? walletOf(wid).initial || 0 : D.wallets.reduce((s, w) => s + (w.initial || 0), 0);
+function balanceUpTo(date, wid) { let b = initialOf(wid); for (const t of D.tx) if (t.date <= date) b += txDelta(t, wid); return b; }
+const walletBalance = w => balanceUpTo(todayStr(), w.id);
+const totalBalance = () => balanceUpTo(todayStr());
+/* Số dư cuối mỗi ngày trong khoảng [from, to] */
+function dailySeries(from, to, wid) {
+  let b = balanceUpTo(addDays(from, -1), wid);
+  const delta = {};
+  D.tx.forEach(t => { if (t.date >= from && t.date <= to) { const d = txDelta(t, wid); if (d) delta[t.date] = (delta[t.date] || 0) + d; } });
+  const out = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) { b += delta[d] || 0; out.push({ d, v: b }); }
+  return out;
+}
+/* Dự báo 30 ngày: chỉ dùng các khoản đã biết trước */
+function forecast() {
+  const today = todayStr(), end = addDays(today, 30), events = [];
+  D.tx.forEach(t => { if (t.date > today && t.date <= end) { const d = txDelta(t); if (d) events.push({ date: t.date, name: t.note || catOf(t.cat).name, v: d, tag: 'Đã hẹn ngày' }); } });
+  pendingRecurring().forEach(p => events.push({ date: today, name: p.r.note || catOf(p.r.cat).name, v: p.r.type === 'in' ? p.r.amount : -p.r.amount, tag: 'Định kỳ chưa ghi' }));
+  D.recurring.forEach(r => {
+    for (let k = 0; k < 2; k++) {
+      let y = +today.slice(0, 4), m = +today.slice(5, 7) - 1 + k; if (m > 11) { m -= 12; y++; }
+      const ym = ymKey(y, m), date = occDate(r, ym);
+      if (ym >= r.startYm && !r.done.includes(ym) && date > today && date <= end) events.push({ date, name: r.note || catOf(r.cat).name, v: r.type === 'in' ? r.amount : -r.amount, tag: 'Định kỳ' });
+    }
+  });
+  D.debts.forEach(d => {
+    const left = debtLeft(d); if (!left || !d.due) return;
+    if (d.due > today && d.due <= end) events.push({ date: d.due, name: (d.kind === 'lend' ? 'Thu nợ ' : 'Trả nợ ') + d.person, v: d.kind === 'lend' ? left : -left, tag: 'Nợ đến hạn' });
+    else if (d.due <= today && d.kind === 'borrow') events.push({ date: today, name: 'Trả nợ ' + d.person, v: -left, tag: 'Nợ quá hạn' });
+  });
+  events.sort((a, b) => a.date.localeCompare(b.date));
+  const start = totalBalance(), byDay = {};
+  events.forEach(e => { byDay[e.date] = (byDay[e.date] || 0) + e.v; });
+  const series = []; let b = start, min = { v: start, d: today };
+  for (let d = today; d <= end; d = addDays(d, 1)) { b += byDay[d] || 0; series.push({ d, v: b }); if (b < min.v) min = { v: b, d }; }
+  return { start, end: b, endDate: end, min, events, series };
+}
 const debtTx = d => D.tx.filter(t => t.debtId === d.id);
 const principalTx = d => D.tx.find(t => t.debtId === d.id && t.debtRole === 'principal');
 const debtPaid = d => debtTx(d).reduce((s, t) => s + (t.debtRole === 'pay' ? t.amount : 0), 0);
@@ -244,9 +335,11 @@ const backupDue = () => { const last = Store.lastBackup(); return D.tx.length >=
    7. TRẠNG THÁI GIAO DIỆN
    ========================================================= */
 const now = new Date();
-const S = { view: 'list', page: null, filter: 'all', statType: 'out', y: now.getFullYear(), m: now.getMonth(),
-  q: '', qType: 'all', debtKind: 'lend', catType: 'out' };
-const PAGE_TITLES = { wallets: 'Ví & tài khoản', debts: 'Sổ nợ', recurring: 'Giao dịch định kỳ', categories: 'Danh mục', backup: 'Sao lưu & khôi phục', search: 'Tìm kiếm' };
+const S = { view: 'list', stack: [], filter: 'all', statType: 'out', rview: 'flow', calDay: null, walletId: null,
+  y: now.getFullYear(), m: now.getMonth(), q: '', qType: 'all', debtKind: 'lend', catType: 'out' };
+const curPage = () => S.stack[S.stack.length - 1] || null;
+const PAGE_TITLES = { wallets: 'Ví & tài khoản', debts: 'Sổ nợ', recurring: 'Giao dịch định kỳ', categories: 'Danh mục', backup: 'Sao lưu & khôi phục',
+  search: 'Tìm kiếm', log: 'Nhật ký thay đổi', ledger: () => walletOf(S.walletId).name };
 
 /* =========================================================
    8. THÀNH PHẦN DÙNG CHUNG
@@ -294,8 +387,11 @@ const sortTx = rows => rows.sort((a, b) => b.date.localeCompare(a.date) || (b.cr
    ========================================================= */
 function noticeHtml() {
   if (!Store.ok) return `<div class="notice">${ic('info')}<div>Trình duyệt đang chặn lưu dữ liệu (có thể do chế độ Duyệt web riêng tư). Hãy mở bằng Safari thường để dữ liệu được giữ lại.</div></div>`;
-  if (backupDue()) return `<div class="notice">${ic('info')}<div>${Store.lastBackup() ? 'Đã hơn 30 ngày bạn chưa sao lưu dữ liệu.' : 'Bạn chưa sao lưu dữ liệu lần nào.'}<br><button class="nact" data-act="page" data-v="backup">Sao lưu ngay</button></div></div>`;
-  return '';
+  let h = '';
+  const fc = forecast();
+  if (fc.min.v < 0) h += `<div class="notice warn">${ic('info')}<div>Theo các khoản đã lên lịch, số dư có thể âm <b class="num">${money(fc.min.v)}</b> vào ngày ${dmy(fc.min.d)}.<br><button class="nact" data-act="goforecast">Xem dự báo</button></div></div>`;
+  if (backupDue()) h += `<div class="notice">${ic('info')}<div>${Store.lastBackup() ? 'Đã hơn 30 ngày bạn chưa sao lưu dữ liệu.' : 'Bạn chưa sao lưu dữ liệu lần nào.'}<br><button class="nact" data-act="page" data-v="backup">Sao lưu ngay</button></div></div>`;
+  return h;
 }
 function pendingHtml() {
   const list = pendingRecurring();
@@ -325,6 +421,104 @@ function viewList() {
   return h;
 }
 
+let gid = 0;
+/* Biểu đồ đường dùng chung (số dư theo ngày, dự báo) */
+function lineChart(pts, color) {
+  if (!pts.length) return '';
+  const W = 320, H = 150, pl = 6, pr = 6, pt = 18, pb = 24, vs = pts.map(p => p.v);
+  let min = Math.min(...vs), max = Math.max(...vs);
+  if (min === max) { min -= 1; max += 1; }
+  const n = pts.length, x = i => pl + (n === 1 ? (W - pl - pr) / 2 : i * (W - pl - pr) / (n - 1)), y = v => pt + (max - v) / (max - min) * (H - pt - pb);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+  const id = 'lg' + (++gid), bottom = H - pb;
+  let g = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${color};stop-opacity:.28"/><stop offset="1" style="stop-color:${color};stop-opacity:0"/></linearGradient></defs>`;
+  if (min < 0 && max > 0) g += `<line x1="${pl}" x2="${W - pr}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--out);stroke-width:1;stroke-dasharray:4 4;opacity:.7"/>`;
+  g += `<path d="${line}L${x(n - 1).toFixed(1)},${bottom}L${x(0).toFixed(1)},${bottom}Z" style="fill:url(#${id})"/>`;
+  g += `<path d="${line}" style="fill:none;stroke:${color};stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>`;
+  const iMin = vs.indexOf(Math.min(...vs)), iMax = vs.indexOf(Math.max(...vs));
+  g += `<circle cx="${x(n - 1)}" cy="${y(vs[n - 1])}" r="4" style="fill:${color};stroke:var(--card);stroke-width:2"/>`;
+  if (iMin !== n - 1) g += `<circle cx="${x(iMin)}" cy="${y(vs[iMin])}" r="3.5" style="fill:${vs[iMin] < 0 ? 'var(--out)' : 'var(--muted)'};stroke:var(--card);stroke-width:2"/>`;
+  const tx = (xx, yy, t, anchor, c) => `<text x="${xx}" y="${yy}" text-anchor="${anchor}" style="font-size:11px;font-weight:500;fill:${c || 'var(--muted)'}">${t}</text>`;
+  g += tx(pl, 11, 'Cao nhất ' + short(vs[iMax]), 'start');
+  g += tx(pl, H - 6, dm(pts[0].d), 'start') + tx(W - pr, H - 6, dm(pts[n - 1].d), 'end');
+  if (n > 2) g += tx(W / 2, H - 6, dm(pts[Math.floor((n - 1) / 2)].d), 'middle');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Biểu đồ số dư">${g}</svg>`;
+}
+/* Biểu đồ thác nước: đầu kỳ → các dòng tiền → cuối kỳ */
+function waterfall(steps) {
+  const W = 320, H = 190, pt = 22, pb = 30, n = steps.length, gw = W / n, bw = Math.min(34, gw * .58);
+  let run = 0; const bars = steps.map(st => { if (st.total) { run = st.v; return { from: 0, to: st.v, st }; } const f = run; run += st.v; return { from: f, to: run, st }; });
+  const lv = bars.flatMap(b => [b.from, b.to]);
+  let min = Math.min(0, ...lv), max = Math.max(0, ...lv); if (min === max) max = 1;
+  const y = v => pt + (max - v) / (max - min) * (H - pt - pb);
+  let g = min < 0 ? `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--line);stroke-width:1"/>` : '';
+  bars.forEach((b, i) => {
+    const cx = i * gw + gw / 2, top = y(Math.max(b.from, b.to)), h = Math.max(2, Math.abs(y(b.from) - y(b.to)));
+    if (i < n - 1) g += `<line x1="${cx + bw / 2}" x2="${cx + gw - bw / 2}" y1="${y(b.to)}" y2="${y(b.to)}" style="stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.6"/>`;
+    g += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="5" style="fill:${b.st.color}"/>`;
+    const val = b.st.total ? short(b.st.v) : (b.st.v > 0 ? '+' : '') + short(b.st.v);
+    g += `<text x="${cx}" y="${top - 6}" text-anchor="middle" style="font-size:10.5px;font-weight:600;fill:var(--text)">${val}</text>`;
+    g += `<text x="${cx}" y="${H - 10}" text-anchor="middle" style="font-size:${n > 5 ? 10 : 11}px;font-weight:500;fill:var(--muted)">${b.st.label}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Biểu đồ dòng tiền tháng">${g}</svg>`;
+}
+function monthRange() {
+  const start = `${ymKey(S.y, S.m)}-01`, last = `${ymKey(S.y, S.m)}-${pad(daysIn(S.y, S.m))}`, today = todayStr();
+  const isCur = ymKey(S.y, S.m) === curYm();
+  return { start, end: isCur ? today : last, isCur, future: start > today };
+}
+function flowView() {
+  const { start, end, isCur, future } = monthRange();
+  const list = D.tx.filter(t => t.date >= start && t.date <= end);
+  const open = balanceUpTo(addDays(start, -1));
+  const tin = sumFlow(list, 'in'), tout = sumFlow(list, 'out');
+  const debt = list.reduce((s, t) => s + (/^sys_(lend|borrow|collect|repay)$/.test(t.cat) ? txDelta(t) : 0), 0);
+  const adj = list.reduce((s, t) => s + (t.cat === 'sys_adjust' ? txDelta(t) : 0), 0);
+  const close = open + tin - tout + debt + adj;
+  const nTr = list.filter(t => t.type === 'transfer').length;
+  const steps = [{ label: 'Đầu kỳ', v: open, total: true, color: 'var(--muted)' }, { label: 'Thu', v: tin, color: 'var(--in)' }, { label: 'Chi', v: -tout, color: 'var(--out)' }];
+  if (debt) steps.push({ label: 'Vay/nợ', v: debt, color: '#0E9384' });
+  if (adj) steps.push({ label: 'Điều chỉnh', v: adj, color: '#98A2B3' });
+  steps.push({ label: 'Cuối kỳ', v: close, total: true, color: 'var(--primary)' });
+  const row = (l, v, cls, sign) => `<div class="kvrow${cls ? ' ' + cls : ''}"><span>${l}</span><span class="num">${sign ? signed(v) : money(v)}</span></div>`;
+  let h = sec('Báo cáo dòng tiền', `<span class="pct">${dm(start)} – ${dm(end < start ? start : end)}</span>`);
+  if (future) h += `<div class="card pad"><p class="hint" style="margin:0">Tháng này chưa bắt đầu. Báo cáo sẽ có khi đến tháng.</p></div>`;
+  else {
+    h += `<div class="card pad wf">${waterfall(steps)}</div><div class="card" style="margin-top:10px">`
+      + row('Số dư đầu tháng', open)
+      + row('Thu nhập', tin, 'pos', true) + row('Chi tiêu', -tout, 'neg', true)
+      + (debt ? row('Cho vay, đi vay, trả nợ', debt, '', true) : '') + (adj ? row('Điều chỉnh khi đối soát', adj, '', true) : '')
+      + row(isCur ? 'Số dư đến hôm nay' : 'Số dư cuối tháng', close, 'strong') + '</div>';
+    const notes = [];
+    if (tin > 0) { const r = Math.round((tin - tout) / tin * 100); notes.push(r >= 0 ? `Bạn giữ lại được <b>${r}%</b> thu nhập của tháng.` : `Chi tiêu vượt thu nhập <b>${Math.abs(r)}%</b>.`); }
+    if (nTr) notes.push(`${nTr} lần chuyển tiền giữa các ví không làm thay đổi tổng số dư nên không có trong bảng.`);
+    if (isCur) {
+      const later = D.tx.filter(t => t.date > end && t.date.slice(0, 7) === curYm() && txDelta(t));
+      if (later.length) notes.push(`Còn ${later.length} khoản hẹn ngày sau hôm nay (${signed(later.reduce((x, t) => x + txDelta(t), 0))}) chưa tính vào báo cáo; con số "Thu/Chi tháng" ở màn hình chính đã gồm cả các khoản này.`);
+    }
+    if (notes.length) h += `<p class="hint">${notes.join(' ')}</p>`;
+    const series = dailySeries(start, end);
+    const lo = series.reduce((a, p) => p.v < a.v ? p : a, series[0]), hi = series.reduce((a, p) => p.v > a.v ? p : a, series[0]);
+    h += sec('Số dư theo ngày') + `<div class="card pad">${lineChart(series, 'var(--primary)')}
+      <div class="kv"><span>Thấp nhất ${dm(lo.d)}</span><b class="num ${lo.v < 0 ? 'neg' : ''}">${money(lo.v)}</b></div>
+      <div class="kv"><span>Cao nhất ${dm(hi.d)}</span><b class="num">${money(hi.v)}</b></div></div>`;
+  }
+  h += trendHtml() + forecastHtml();
+  return h;
+}
+function forecastHtml() {
+  const f = forecast();
+  let h = sec('Dự báo 30 ngày tới', `<span class="pct">từ hôm nay</span>`) + '<div class="card pad" id="forecast">';
+  h += `<div class="kv first"><span>Dự kiến ngày ${dmy(f.endDate)}</span>${f.min.v < 0 ? '<span class="badge red">Có thể âm</span>' : ''}</div>
+    <div class="big num ${f.end < 0 ? 'neg' : ''}">${money(f.end)}</div>`;
+  if (!f.events.length) return h + `<p class="hint" style="margin-bottom:0">Chưa có khoản nào được lên lịch trong 30 ngày tới. Thêm giao dịch định kỳ hoặc hạn trả nợ để dự báo chính xác hơn.</p></div>`;
+  h += lineChart(f.series, f.min.v < 0 ? 'var(--out)' : 'var(--in)');
+  h += `<div class="kv"><span>Hiện có</span><b class="num">${money(f.start)}</b></div>
+    <div class="kv"><span>Thấp nhất ${dm(f.min.d)}</span><b class="num ${f.min.v < 0 ? 'neg' : ''}">${money(f.min.v)}</b></div></div>`;
+  h += `<div class="card" style="margin-top:10px">${f.events.slice(0, 12).map(e => `<div class="item"><div class="mid"><div class="nm">${esc(e.name)}</div><div class="nt">${dm(e.date)} · ${e.tag}</div></div><div class="am num ${e.v > 0 ? 'pos' : 'neg'}">${signed(e.v)}</div></div>`).join('')}</div>`;
+  if (f.events.length > 12) h += `<p class="hint">và ${f.events.length - 12} khoản khác.</p>`;
+  return h + `<p class="hint">Dự báo chỉ cộng trừ các khoản đã biết trước: giao dịch hẹn ngày, giao dịch định kỳ, nợ đến hạn. Chi tiêu hằng ngày chưa ghi sẽ không được tính; khoản cho vay đã quá hạn cũng không được tính vì chưa chắc thu được.</p>`;
+}
 function trendHtml() {
   const months = [];
   for (let k = 5; k >= 0; k--) {
@@ -348,43 +542,71 @@ function trendHtml() {
     <div class="legend"><span><i style="background:var(--in)"></i>Thu</span><span><i style="background:var(--out)"></i>Chi</span></div>
     <div class="kv"><span>Chênh lệch tháng ${S.m + 1}</span><b class="num ${diff >= 0 ? 'pos' : 'neg'}">${signed(diff)}</b></div></div>`;
 }
-function viewStats() {
+function catView() {
   const type = S.statType, word = type === 'out' ? 'chi tiêu' : 'thu nhập';
   const list = monthTx(S.y, S.m).filter(t => isFlow(t) && t.type === type);
-  let h = `<div class="vtop">${monthNav(true)}</div>` + `<div class="vgap">${seg([['out', 'Chi tiêu', 'up'], ['in', 'Thu nhập', 'down']], type, 'stat')}</div>`;
+  let h = `<div class="vgap">${chips([['out', 'Chi tiêu'], ['in', 'Thu nhập']], type, 'stat')}</div>`;
   const total = list.reduce((s, t) => s + t.amount, 0);
   const by = {};
   list.forEach(t => { by[t.cat] = (by[t.cat] || 0) + t.amount; });
   const items = Object.keys(by).map(k => ({ c: catOf(k), v: by[k] })).sort((a, b) => b.v - a.v);
-  if (!items.length) h += emptyBox(`Chưa có ${word} trong tháng`, 'Số liệu sẽ hiển thị khi bạn thêm giao dịch.', 'pie');
-  else {
-    const R = 80, C = 2 * Math.PI * R;
-    let off = 0, arcs = '';
-    items.forEach(it => {
-      const len = it.v / total * C, gap = items.length > 1 && len > 6 ? 3 : 0;
-      arcs += `<circle cx="100" cy="100" r="${R}" fill="none" style="stroke:${it.c.c}" stroke-width="22" stroke-dasharray="${Math.max(len - gap, .01)} ${C}" stroke-dashoffset="${-off}"/>`;
-      off += len;
-    });
-    const pm = S.m === 0 ? 11 : S.m - 1, py = S.m === 0 ? S.y - 1 : S.y;
-    const prev = monthTx(py, pm).filter(t => isFlow(t) && t.type === type).reduce((s, t) => s + t.amount, 0);
-    let cmp = '';
-    if (prev > 0) {
-      const pct = Math.round((total - prev) / prev * 100), up = pct > 0, good = type === 'in' ? up : !up;
-      cmp = pct === 0 ? '<div class="cmp">Bằng tháng trước</div>'
-        : `<div class="cmp" style="color:var(--${good ? 'in' : 'out'})">${ic(up ? 'arrUp' : 'arrDown')}${up ? 'Tăng' : 'Giảm'} ${Math.abs(pct)}% so với tháng trước</div>`;
-    }
-    h += `<div class="card" style="margin-top:12px"><div class="donutwrap"><div class="donut"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="${R}" fill="none" style="stroke:var(--chip)" stroke-width="22"/>${arcs}</svg>
-      <div class="ctr"><small>Tổng ${word}</small><strong class="num">${money(total)}</strong></div></div>${cmp}</div></div>`;
+  if (!items.length) return h + emptyBox(`Chưa có ${word} trong tháng`, 'Số liệu sẽ hiển thị khi bạn thêm giao dịch.', 'pie');
+  const R = 80, C = 2 * Math.PI * R;
+  let off = 0, arcs = '';
+  items.forEach(it => {
+    const len = it.v / total * C, gap = items.length > 1 && len > 6 ? 3 : 0;
+    arcs += `<circle cx="100" cy="100" r="${R}" fill="none" style="stroke:${it.c.c}" stroke-width="22" stroke-dasharray="${Math.max(len - gap, .01)} ${C}" stroke-dashoffset="${-off}"/>`;
+    off += len;
+  });
+  const pm = S.m === 0 ? 11 : S.m - 1, py = S.m === 0 ? S.y - 1 : S.y;
+  const prev = monthTx(py, pm).filter(t => isFlow(t) && t.type === type).reduce((s, t) => s + t.amount, 0);
+  let cmp = '';
+  if (prev > 0) {
+    const pct = Math.round((total - prev) / prev * 100), up = pct > 0, good = type === 'in' ? up : !up;
+    cmp = pct === 0 ? '<div class="cmp">Bằng tháng trước</div>'
+      : `<div class="cmp" style="color:var(--${good ? 'in' : 'out'})">${ic(up ? 'arrUp' : 'arrDown')}${up ? 'Tăng' : 'Giảm'} ${Math.abs(pct)}% so với tháng trước</div>`;
   }
-  h += trendHtml();
-  if (items.length) {
-    h += sec('Theo danh mục') + `<div class="card">${items.map(it => {
-      const p = it.v / total * 100;
-      return `<div class="item">${ci(it.c)}<div class="mid"><div class="top2"><span class="nm">${esc(it.c.name)} <span class="pct">${p < 1 ? '<1' : Math.round(p)}%</span></span><span class="am num">${money(it.v)}</span></div>
-        <div class="bar"><i style="width:${p}%;background:${it.c.c}"></i></div></div></div>`;
-    }).join('')}</div>`;
+  h += `<div class="card" style="margin-top:12px"><div class="donutwrap"><div class="donut"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="${R}" fill="none" style="stroke:var(--chip)" stroke-width="22"/>${arcs}</svg>
+    <div class="ctr"><small>Tổng ${word}</small><strong class="num">${money(total)}</strong></div></div>${cmp}</div></div>`;
+  h += sec('Theo danh mục') + `<div class="card">${items.map(it => {
+    const p = it.v / total * 100;
+    return `<div class="item">${ci(it.c)}<div class="mid"><div class="top2"><span class="nm">${esc(it.c.name)} <span class="pct">${p < 1 ? '<1' : Math.round(p)}%</span></span><span class="am num">${money(it.v)}</span></div>
+      <div class="bar"><i style="width:${p}%;background:${it.c.c}"></i></div></div></div>`;
+  }).join('')}</div>`;
+  return h;
+}
+function calView() {
+  const y = S.y, m = S.m, n = daysIn(y, m), off = (new Date(y, m, 1).getDay() + 6) % 7, today = todayStr();
+  const list = monthTx(y, m), by = {};
+  list.filter(isFlow).forEach(t => { const k = t.date; by[k] = by[k] || { i: 0, o: 0 }; by[k][t.type === 'in' ? 'i' : 'o'] += t.amount; });
+  const maxO = Math.max(1, ...Object.values(by).map(x => x.o));
+  if (!S.calDay || S.calDay.slice(0, 7) !== ymKey(y, m)) S.calDay = ymKey(y, m) === curYm() ? today : null;
+  let cells = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => `<div class="cwd">${d}</div>`).join('');
+  for (let i = 0; i < off; i++) cells += '<div></div>';
+  for (let d = 1; d <= n; d++) {
+    const ds = `${ymKey(y, m)}-${pad(d)}`, x = by[ds], a = x && x.o ? .12 + .5 * (x.o / maxO) : 0;
+    cells += `<button class="cday${ds === today ? ' today' : ''}${ds === S.calDay ? ' sel' : ''}${ds > today ? ' fut' : ''}" data-act="calday" data-v="${ds}" style="${a ? `background:${hexA('#F04438', a)}` : ''}">
+      <span class="dn">${d}</span>${x && x.o ? `<span class="dv">${short(x.o)}</span>` : ''}${x && x.i ? '<i class="cdot"></i>' : ''}</button>`;
+  }
+  const days = Object.keys(by), spentDays = days.filter(k => by[k].o > 0);
+  const top = spentDays.sort((a, b) => by[b].o - by[a].o)[0];
+  const passed = ymKey(y, m) < curYm() ? n : ymKey(y, m) === curYm() ? +today.slice(8) : 0;
+  const noSpend = Math.max(0, passed - spentDays.filter(k => k <= today).length);
+  let h = `<div class="card pad vgap"><div class="cal">${cells}</div>
+    <div class="legend" style="margin-top:12px"><span><i style="background:${hexA('#F04438', .55)}"></i>Chi nhiều</span><span><i style="background:${hexA('#F04438', .15)}"></i>Chi ít</span><span><i class="lgdot"></i>Có khoản thu</span></div></div>`;
+  if (passed) h += `<div class="card" style="margin-top:10px">${top ? `<div class="kvrow"><span>Ngày chi nhiều nhất</span><span class="num">${dm(top)} · ${money(by[top].o)}</span></div>` : ''}
+    <div class="kvrow"><span>Số ngày không chi tiêu</span><span>${noSpend}/${passed} ngày</span></div></div>`;
+  if (S.calDay) {
+    const rows = sortTx(list.filter(t => t.date === S.calDay));
+    h += rows.length ? `<div style="margin-top:16px">${groupsHtml(rows, false)}</div>`
+      : `<div class="dayh" style="margin-top:16px"><span>${dayLabel(S.calDay)}</span></div><div class="card pad"><p class="hint" style="margin:0">Không có giao dịch trong ngày này.</p></div>`;
   }
   return h;
+}
+function viewStats() {
+  const sub = S.rview;
+  const body = sub === 'cat' ? catView() : sub === 'cal' ? calView() : flowView();
+  return `<div class="vtop">${monthNav(true)}</div><div class="vgap">${seg([['flow', 'Dòng tiền', 'chart', 'tr'], ['cat', 'Danh mục', 'pie', 'tr'], ['cal', 'Lịch', 'cal', 'tr']], sub, 'rview')}</div>` + body;
 }
 
 const budgetColor = pct => pct >= 100 ? 'var(--out)' : pct >= 80 ? 'var(--amber)' : 'var(--in)';
@@ -427,9 +649,13 @@ function viewMore() {
     ${menuRow('page', 'categories', { c: '#F79009', i: 'tag' }, 'Danh mục', `${D.categories.filter(c => !c.hidden).length} danh mục đang dùng`)}
   </div>
   <div class="grp-t">Dữ liệu</div><div class="card">
+    ${menuRow('page', 'log', { c: '#E04F16', i: 'history' }, 'Nhật ký thay đổi', LOG.length ? `${LOG.length} thay đổi gần nhất` : 'Ghi lại mọi lần thêm, sửa, xóa')}
     ${menuRow('page', 'backup', { c: '#2E90FA', i: 'db' }, 'Sao lưu & khôi phục', last ? 'Lần gần nhất ' + dmy(ymd(new Date(last))) : 'Chưa sao lưu lần nào', due ? '<span class="badge red">Nên sao lưu</span>' : '')}
   </div>
-  <p class="foot">Sổ Thu Chi · phiên bản 2.0<br>Dữ liệu chỉ lưu trên điện thoại này</p>`;
+  <div class="grp-t">Cài đặt</div><div class="card">
+    ${menuRow('theme', '', { c: '#4F46E5', i: THEMES[themePref()].i }, 'Giao diện', THEMES[themePref()].name)}
+  </div>
+  <p class="foot">Sổ Thu Chi · phiên bản 2.1<br>Dữ liệu chỉ lưu trên điện thoại này</p>`;
 }
 
 /* =========================================================
@@ -439,9 +665,76 @@ function pageWallets() {
   let h = `<div class="card pad"><div class="kv first"><span>Tổng số dư</span><span class="pct">${D.wallets.length} ví</span></div><div class="big num">${money(totalBalance())}</div></div>`;
   h += sec('Danh sách ví', D.wallets.length > 1 ? `<button class="mini gh" data-act="transfer">${'Chuyển tiền'}</button>` : '');
   h += `<div class="card">${D.wallets.map(w => { const b = walletBalance(w);
-    return `<button class="item" data-act="wallet" data-v="${w.id}">${ci(w)}<div class="mid"><div class="nm">${esc(w.name)}</div><div class="nt">Số dư ban đầu ${money(w.initial)}</div></div><div class="am num ${b < 0 ? 'neg' : ''}">${money(b)}</div></button>`;
+    return `<button class="item" data-act="ledger" data-v="${w.id}">${ci(w)}<div class="mid"><div class="nm">${esc(w.name)}</div><div class="nt">${w.reconciledAt ? 'Đối soát ' + dmy(w.reconciledAt) : 'Chưa đối soát'}</div></div><div class="am num ${b < 0 ? 'neg' : ''}">${money(b)}</div><span class="chev">${ic('right', 18)}</span></button>`;
   }).join('')}</div>`;
-  return h + addBtn('wallet-new', 'Thêm ví');
+  return h + addBtn('wallet-new', 'Thêm ví') + `<p class="hint">Chạm vào một ví để xem sổ cái (số dư sau từng giao dịch) và đối soát với số tiền thực tế.</p>`;
+}
+/* Sổ cái ví: như sao kê ngân hàng, mỗi dòng kèm số dư sau giao dịch */
+function pageLedger() {
+  const w = D.wallets.find(x => x.id === S.walletId);
+  if (!w) { S.stack.pop(); return curPage() ? PAGES[curPage()]() : VIEWS[S.view](); }
+  const { start, isCur } = monthRange(), last = `${ymKey(S.y, S.m)}-${pad(daysIn(S.y, S.m))}`;
+  const open = balanceUpTo(addDays(start, -1), w.id);
+  const rows = D.tx.filter(t => t.date >= start && t.date <= last && txDelta(t, w.id) !== 0)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
+  let run = open, inSum = 0, outSum = 0;
+  const lines = rows.map(t => { const d = txDelta(t, w.id); run += d; if (d > 0) inSum += d; else outSum -= d; return { t, d, after: run }; }).reverse();
+  let h = `<div class="card pad"><div class="kv first"><span>Số dư hiện tại</span>${ci(w, 16).replace('class="ci"', 'class="ci sm"')}</div><div class="big num">${money(walletBalance(w))}</div>
+    <div class="kv"><span>${w.reconciledAt ? 'Đối soát lần cuối ' + dmy(w.reconciledAt) : 'Chưa đối soát lần nào'}</span></div>
+    <div class="btnrow"><button class="btn pri sm" data-act="recon">${ic('scale', 18)}Đối soát số dư</button><button class="btn sec2 sm" data-act="wallet-edit">Sửa ví</button></div></div>`;
+  h += `<div class="vtop" style="margin-top:18px">${monthNav(true)}</div>`;
+  h += `<div class="card" style="margin-top:12px"><div class="kvrow strong"><span>${isCur ? 'Số dư đến nay' : 'Số dư cuối tháng'}</span><span class="num">${money(run)}</span></div>`;
+  h += lines.length ? lines.map(l => ledgerRow(l, w.id)).join('') : `<div class="item"><p class="hint" style="margin:0">Không có giao dịch nào của ví trong tháng này.</p></div>`;
+  h += `<div class="kvrow strong"><span>Số dư đầu tháng</span><span class="num">${money(open)}</span></div></div>`;
+  if (lines.length) h += `<p class="hint">Trong tháng: tiền vào <b class="pos num">+${fmt(inSum)} ₫</b>, tiền ra <b class="neg num">−${fmt(outSum)} ₫</b>. Đầu tháng + vào − ra = cuối tháng.</p>`;
+  return h;
+}
+function ledgerRow(l, wid) {
+  const t = l.t, c = t.type === 'transfer' ? SYS.transfer : catOf(t.cat);
+  const name = t.type === 'transfer' ? (t.wallet === wid ? 'Chuyển đến ' + walletOf(t.toWallet).name : 'Nhận từ ' + walletOf(t.wallet).name) : c.name;
+  return `<button class="item" data-act="tx" data-id="${esc(t.id)}">${ci(c)}<div class="mid"><div class="nm">${esc(name)}</div><div class="nt">${dm(t.date)}${t.note ? ' · ' + esc(t.note) : ''}</div></div>
+    <div class="rt"><div class="am num ${l.d > 0 ? 'pos' : 'neg'}">${signed(l.d)}</div><div class="nt num">Còn ${money(l.after)}</div></div></button>`;
+}
+/* Nhật ký thay đổi */
+const OP = { add: { t: 'Thêm', i: 'plusc', c: '#12B76A' }, edit: { t: 'Sửa', i: 'pen', c: '#2E90FA' }, del: { t: 'Xóa', i: 'trash', c: '#F04438' }, import: { t: 'Khôi phục', i: 'ul', c: '#4F46E5' } };
+function logTitle(e) {
+  if (e.op === 'import') return 'Khôi phục dữ liệu từ tệp';
+  const x = e.after || e.before, op = OP[e.op].t;
+  switch (e.kind) {
+    case 'tx':
+      if (x.cat === 'sys_adjust') return `${op} điều chỉnh số dư`;
+      if (x.type === 'transfer') return `${op} chuyển tiền`;
+      if (SYS[x.cat]) return `${op} giao dịch ${SYS[x.cat].name.toLowerCase()}`;
+      return `${op} khoản ${x.type === 'in' ? 'thu' : 'chi'}`;
+    case 'wallets': return `${op} ví`;
+    case 'categories': return `${op} danh mục`;
+    case 'recurring': return `${op} giao dịch định kỳ`;
+    case 'debts': return `${op} khoản ${x.kind === 'lend' ? 'cho vay' : 'đi vay'}`;
+    case 'budgets': return `${op} ngân sách`;
+  }
+  return op;
+}
+function logSub(e) {
+  if (e.op === 'import') return e.text || '';
+  const x = e.after || e.before;
+  switch (e.kind) {
+    case 'tx': return x.type === 'transfer' ? `${walletOf(x.wallet).name} → ${walletOf(x.toWallet).name} · ${money(x.amount)}`
+      : `${catOf(x.cat).name}${x.note ? ' · ' + x.note : ''} · ${x.type === 'in' ? '+' : '−'}${fmt(x.amount)} ₫`;
+    case 'wallets': return x.name;
+    case 'categories': return x.name;
+    case 'recurring': return `${x.note || catOf(x.cat).name} · ${money(x.amount)}`;
+    case 'debts': return `${x.person} · ${money(x.amount)}`;
+    case 'budgets': return `${catOf(x.cat).name} · ${money(x.amount)}/tháng`;
+  }
+  return '';
+}
+function pageLog() {
+  if (!LOG.length) return emptyBox('Chưa có thay đổi nào', 'Mỗi lần bạn thêm, sửa hoặc xóa dữ liệu, ứng dụng sẽ ghi lại tại đây để bạn đối chiếu.', 'history');
+  const groups = [];
+  LOG.forEach(e => { const d = ymd(new Date(e.at)), g = groups[groups.length - 1]; if (g && g.d === d) g.items.push(e); else groups.push({ d, items: [e] }); });
+  return groups.map(g => `<div class="day"><div class="dayh"><span>${dayLabel(g.d, true)}</span><span>${g.items.length} thay đổi</span></div><div class="card">${g.items.map(e =>
+    `<button class="item" data-act="logitem" data-id="${e.id}">${ci({ c: OP[e.op].c, i: OP[e.op].i }, 18)}<div class="mid"><div class="nm">${esc(logTitle(e))}</div><div class="nt">${hm(e.at)} · ${esc(logSub(e))}</div></div><span class="chev">${ic('right', 18)}</span></button>`).join('')}</div></div>`).join('')
+    + `<p class="hint">Lưu ${LOG_MAX} thay đổi gần nhất trên máy này. Nhật ký không nằm trong tệp sao lưu.</p>`;
 }
 function debtRow(d) {
   const left = debtLeft(d), pct = (d.amount - left) / d.amount * 100, color = DEBT_C[d.kind];
@@ -520,14 +813,15 @@ function updateSearch() {
    11. RENDER
    ========================================================= */
 const VIEWS = { list: viewList, stats: viewStats, budget: viewBudget, more: viewMore };
-const PAGES = { wallets: pageWallets, debts: pageDebts, recurring: pageRecurring, categories: pageCategories, backup: pageBackup };
+const PAGES = { wallets: pageWallets, debts: pageDebts, recurring: pageRecurring, categories: pageCategories, backup: pageBackup, ledger: pageLedger, log: pageLog };
 function render() {
-  $('top').innerHTML = S.page
-    ? `<div class="pghd"><button class="hicon" data-act="back" aria-label="Quay lại">${ic('left')}</button><h1>${PAGE_TITLES[S.page]}</h1></div>`
+  const pg = curPage(), title = pg && (typeof PAGE_TITLES[pg] === 'function' ? PAGE_TITLES[pg]() : PAGE_TITLES[pg]);
+  $('top').innerHTML = pg
+    ? `<div class="pghd"><button class="hicon" data-act="back" aria-label="Quay lại">${ic('left')}</button><h1>${esc(title)}</h1></div>`
     : `<div class="brand"><div class="logo">${ic('wallet', 20)}</div><h1>Sổ Thu Chi</h1></div><button class="hicon" data-act="page" data-v="search" aria-label="Tìm kiếm giao dịch">${ic('search')}</button>`;
   const main = $('main');
-  if (S.page === 'search') { if (!$('sq')) main.innerHTML = searchFrame(); updateSearch(); }
-  else main.innerHTML = S.page ? PAGES[S.page]() : VIEWS[S.view]();
+  if (pg === 'search') { if (!$('sq')) main.innerHTML = searchFrame(); updateSearch(); }
+  else main.innerHTML = pg ? PAGES[pg]() : VIEWS[S.view]();
   ['list', 'stats', 'budget', 'more'].forEach(v => $('t-' + v).classList.toggle('on', S.view === v));
   $('t-more').classList.toggle('warn', backupDue());
 }
@@ -553,7 +847,7 @@ function closeSheet() {
   document.body.style.overflow = ''; F = null;
   try { document.activeElement && document.activeElement.blur(); } catch (e) {}
 }
-function focusAmount() { setTimeout(() => { const el = document.querySelector('#shBody [data-f=amount]'); try { el && el.focus(); } catch (e) {} }, 0); }
+function focusAmount(k) { setTimeout(() => { const el = document.querySelector(`#shBody [data-f=${k || 'amount'}]`); try { el && el.focus(); } catch (e) {} }, 0); }
 function shake(el) { if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 function failForm(err) {
   F.err = err; drawForm();
@@ -866,6 +1160,113 @@ function payForm(id) {
   };
 }
 
+/* --- Biểu mẫu: đối soát số dư --- */
+function reconForm(wid) {
+  const w = D.wallets.find(x => x.id === wid), book = walletBalance(w);
+  return {
+    id: wid, err: {}, v: { actual: null, note: '' },
+    title: () => 'Đối soát · ' + w.name,
+    body: () => {
+      const e = F.err;
+      return `<div class="card pad" style="margin-top:4px"><div class="kv first"><span>Số dư trên sổ hôm nay</span></div><div class="big num">${money(book)}</div></div>`
+        + flabel('Số tiền thực tế đang có') + `<label class="amt tr"><input data-f="actual" data-zero="1" class="money num" type="text" inputmode="numeric" autocomplete="off" placeholder="Nhập số tiền" value="${F.v.actual != null ? fmt(F.v.actual) : ''}" aria-label="Số tiền thực tế"><span class="cur">₫</span></label>`
+        + errEl('actual', 'Vui lòng nhập số tiền thực tế (có thể là 0)', e.actual)
+        + `<div class="recdiff" id="recDiff">${reconDiffHtml(book)}</div>`
+        + flabel('Ghi chú') + textField('note', F.v.note, 'VD: Kiểm tiền mặt cuối tuần', 'pen')
+        + `<p class="hint">Nếu có chênh lệch, ứng dụng ghi một khoản <b>Điều chỉnh số dư</b> đúng bằng phần chênh lệch để sổ khớp với thực tế. Khoản này hiện riêng trong báo cáo, không tính vào thu hay chi.</p>`;
+    },
+    live: () => { const el = $('recDiff'); if (el) el.innerHTML = reconDiffHtml(book); },
+    foot: () => saveFoot(false, 'Xác nhận đối soát'),
+    save() {
+      const v = F.v;
+      if (v.actual == null) return failForm({ actual: 1 });
+      const diff = v.actual - book, today = todayStr();
+      const ok = commit(() => {
+        const ww = D.wallets.find(x => x.id === wid); ww.reconciledAt = today;
+        if (diff) D.tx.push({ id: newId(), type: diff > 0 ? 'in' : 'out', amount: Math.abs(diff), cat: 'sys_adjust', wallet: wid,
+          note: v.note.trim().slice(0, 120) || 'Đối soát số dư', date: today, createdAt: Date.now() });
+      });
+      if (!ok) return;
+      closeSheet();
+      toast(diff ? `Đã điều chỉnh ${signed(diff)}, sổ đã khớp thực tế` : 'Sổ đã khớp với thực tế');
+    }
+  };
+}
+function reconDiffHtml(book) {
+  const a = F && F.v.actual;
+  if (a == null) return '';
+  const d = a - book;
+  if (!d) return `<span class="pos">${ic('checkc', 16)}Sổ đã khớp với thực tế</span>`;
+  return `<span class="${d > 0 ? 'pos' : 'neg'}">Chênh lệch <b class="num">${signed(d)}</b> · thực tế ${d > 0 ? 'nhiều' : 'ít'} hơn sổ</span>`;
+}
+/* Xem / xóa một khoản điều chỉnh số dư */
+function adjustView(t) {
+  return {
+    id: t.id, title: () => 'Điều chỉnh số dư',
+    body: () => `<div class="card" style="margin-top:4px"><div class="kvrow"><span>Ví</span><span>${esc(walletOf(t.wallet).name)}</span></div>
+      <div class="kvrow"><span>Số tiền</span><span class="num ${t.type === 'in' ? 'pos' : 'neg'}">${t.type === 'in' ? '+' : '−'}${fmt(t.amount)} ₫</span></div>
+      <div class="kvrow"><span>Ngày</span><span>${dmy(t.date)}</span></div><div class="kvrow"><span>Ghi chú</span><span>${esc(t.note)}</span></div></div>
+      <p class="hint">Khoản này được tạo khi đối soát để sổ khớp với số tiền thực tế. Muốn sửa, hãy xóa rồi đối soát lại.</p>`,
+    foot: () => saveFoot(true, 'Đóng'),
+    save() { closeSheet(); },
+    async del() {
+      if (!(await ask({ title: 'Xóa khoản điều chỉnh?', text: 'Số dư ví sẽ quay về như trước lần đối soát này.' }))) return;
+      if (commit(() => { D.tx = D.tx.filter(x => x.id !== t.id); })) { closeSheet(); toast('Đã xóa khoản điều chỉnh'); }
+    }
+  };
+}
+/* Chi tiết một dòng nhật ký */
+const TYPE_NAME = { in: 'Thu', out: 'Chi', transfer: 'Chuyển tiền' };
+const FIELDS = {
+  tx: [['type', 'Loại', v => TYPE_NAME[v]], ['amount', 'Số tiền', money], ['cat', 'Danh mục', v => v === 'transfer' ? '' : catOf(v).name], ['wallet', 'Ví', v => walletOf(v).name],
+    ['toWallet', 'Đến ví', v => v ? walletOf(v).name : ''], ['note', 'Ghi chú'], ['date', 'Ngày', dmy]],
+  wallets: [['name', 'Tên ví'], ['initial', 'Số dư ban đầu', money]],
+  categories: [['name', 'Tên'], ['type', 'Loại', v => TYPE_NAME[v]], ['hidden', 'Trạng thái', v => v ? 'Đã ẩn' : 'Đang hiện']],
+  recurring: [['type', 'Loại', v => TYPE_NAME[v]], ['amount', 'Số tiền', money], ['cat', 'Danh mục', v => catOf(v).name], ['wallet', 'Ví', v => walletOf(v).name], ['note', 'Ghi chú'], ['day', 'Ngày hàng tháng']],
+  debts: [['kind', 'Loại', v => v === 'lend' ? 'Cho vay' : 'Đi vay'], ['person', 'Người'], ['amount', 'Số tiền', money], ['date', 'Ngày', dmy], ['due', 'Hạn trả', v => v ? dmy(v) : 'Không đặt'], ['note', 'Ghi chú']],
+  budgets: [['cat', 'Danh mục', v => catOf(v).name], ['amount', 'Hạn mức/tháng', money]]
+};
+function logDetail(e) {
+  return {
+    id: e.id, title: () => logTitle(e),
+    body: () => {
+      const when = new Date(e.at);
+      let h = `<div class="card" style="margin-top:4px"><div class="kvrow"><span>Thời điểm</span><span>${hm(e.at)} · ${dmy(ymd(when))}</span></div><div class="kvrow"><span>Thao tác</span><span><span class="badge" style="background:${hexA(OP[e.op].c, .12)};color:${OP[e.op].c}">${OP[e.op].t}</span></span></div></div>`;
+      if (e.op === 'import') return h + `<p class="hint">${esc(e.text)}</p>`;
+      const fl = FIELDS[e.kind] || [], show = (f, v) => v == null || v === '' ? '—' : esc(f[2] ? f[2](v) : v);
+      if (e.op === 'edit') {
+        const ch = fl.filter(f => JSON.stringify(e.before[f[0]]) !== JSON.stringify(e.after[f[0]]));
+        h += flabel('Nội dung thay đổi') + `<div class="card"><div class="kvrow head"><span>Mục</span><span>Trước → Sau</span></div>${ch.length ? ch.map(f =>
+          `<div class="kvrow"><span>${f[1]}</span><span><s class="old">${show(f, e.before[f[0]])}</s> → <b>${show(f, e.after[f[0]])}</b></span></div>`).join('') : '<div class="kvrow"><span>Chỉ đổi biểu tượng hoặc màu</span><span></span></div>'}</div>`;
+        const same = fl.filter(f => !ch.includes(f) && e.after[f[0]] != null && e.after[f[0]] !== '');
+        if (same.length) h += flabel('Không đổi') + `<div class="card">${same.map(f => `<div class="kvrow"><span>${f[1]}</span><span>${show(f, e.after[f[0]])}</span></div>`).join('')}</div>`;
+      } else {
+        const x = e.after || e.before;
+        h += flabel(e.op === 'add' ? 'Dữ liệu được thêm' : 'Dữ liệu đã xóa') + `<div class="card">${fl.filter(f => x[f[0]] != null && x[f[0]] !== '').map(f => `<div class="kvrow"><span>${f[1]}</span><span>${show(f, x[f[0]])}</span></div>`).join('')}</div>`;
+      }
+      return h;
+    },
+    foot: () => ''
+  };
+}
+/* Giao diện sáng / tối */
+const THEMES = { auto: { name: 'Tự động theo iPhone', i: 'contrast' }, light: { name: 'Sáng', i: 'sun' }, dark: { name: 'Tối', i: 'moon' } };
+const themePref = () => { try { const p = localStorage.getItem(KEY_THEME); return THEMES[p] ? p : 'auto'; } catch (e) { return 'auto'; } };
+const mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme() {
+  const p = themePref(), dark = p === 'dark' || (p === 'auto' && mqDark && mqDark.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#0B0D12' : '#F5F6FA');
+}
+if (mqDark) { const f = () => { if (themePref() === 'auto') applyTheme(); }; mqDark.addEventListener ? mqDark.addEventListener('change', f) : mqDark.addListener(f); }
+function themeForm() {
+  return {
+    title: () => 'Giao diện',
+    body: () => `<div class="card" style="margin-top:4px">${Object.keys(THEMES).map(k => `<button class="item" data-act="theme-set" data-v="${k}">${ci({ c: '#4F46E5', i: THEMES[k].i })}<div class="mid"><div class="nm">${THEMES[k].name}</div>${k === 'auto' ? '<div class="nt">Đổi theo cài đặt Sáng/Tối của iPhone</div>' : ''}</div>${themePref() === k ? `<span style="color:var(--primary)">${ic('check')}</span>` : ''}</button>`).join('')}</div>`,
+    foot: () => ''
+  };
+}
+
 /* =========================================================
    13. HỘP XÁC NHẬN & THÔNG BÁO NHANH
    ========================================================= */
@@ -931,7 +1332,7 @@ function importFile(f) {
       ['wallets', 'categories', 'recurring', 'debts'].forEach(k => mergeArr(D[k], inc[k]));
       added = mergeArr(D.tx, inc.tx);
       Object.assign(D.budgets, inc.budgets);
-    });
+    }, { summary: () => `Tệp ${f.name}: thêm ${added} giao dịch mới, cập nhật ${inc.tx.length - added} giao dịch đã có.` });
     if (ok) toast(added ? `Đã khôi phục ${fmt(added)} giao dịch mới` : 'Dữ liệu trong tệp đã có sẵn trên máy');
   };
   rd.onerror = () => toast('Không đọc được tệp');
@@ -947,9 +1348,18 @@ const ACT = {
   prev() { if (S.m === 0) { S.m = 11; S.y--; } else S.m--; render(); },
   next() { if (S.m === 11) { S.m = 0; S.y++; } else S.m++; render(); },
   pickm(b) { const [y, m] = b.dataset.v.split('-').map(Number); S.y = y; S.m = m; render(); },
-  tab(b) { go(() => { S.view = b.dataset.v; S.page = null; render(); }); },
-  page(b) { go(() => { S.page = b.dataset.v; render(); }); if (S.page === 'search') setTimeout(() => { try { $('sq').focus(); } catch (e) {} }, 60); },
-  back() { go(() => { S.page = null; render(); }); },
+  tab(b) { go(() => { S.view = b.dataset.v; S.stack = []; render(); }); },
+  page(b) { go(() => { S.stack.push(b.dataset.v); render(); }); if (b.dataset.v === 'search') setTimeout(() => { try { $('sq').focus(); } catch (e) {} }, 60); },
+  back() { go(() => { S.stack.pop(); render(); }); },
+  ledger(b) { S.walletId = b.dataset.v; go(() => { S.stack.push('ledger'); render(); }); },
+  'wallet-edit'() { const w = D.wallets.find(x => x.id === S.walletId); if (w) openForm(walletForm(w)); },
+  recon() { if (D.wallets.some(x => x.id === S.walletId)) { openForm(reconForm(S.walletId)); focusAmount('actual'); } },
+  rview(b) { S.rview = b.dataset.v; render(); },
+  calday(b) { S.calDay = b.dataset.v; render(); },
+  goforecast() { S.view = 'stats'; S.rview = 'flow'; S.stack = []; render(); setTimeout(() => { const el = $('forecast'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 50); },
+  logitem(b) { const e = LOG.find(x => x.id === b.dataset.id); if (e) openForm(logDetail(e)); },
+  theme() { openForm(themeForm()); },
+  'theme-set'(b) { try { localStorage.setItem(KEY_THEME, b.dataset.v); } catch (e) {} applyTheme(); drawForm(); render(); },
   filter(b) { S.filter = b.dataset.v; render(); },
   stat(b) { S.statType = b.dataset.v; render(); },
   qtype(b) { S.qType = b.dataset.v; updateSearch(); },
@@ -960,6 +1370,7 @@ const ACT = {
   tx(b) {
     const t = D.tx.find(x => x.id === b.dataset.id); if (!t) return;
     if (t.debtId && D.debts.some(d => d.id === t.debtId)) return openForm(debtDetail(t.debtId));
+    if (t.cat === 'sys_adjust') return openForm(adjustView(t));
     openForm(txForm({ tx: t }));
   },
   'rec-log'(b) { const r = findRec(b.dataset.id); if (r) { openForm(txForm({ occ: { r, ym: b.dataset.v, date: occDate(r, b.dataset.v) } })); focusAmount(); } },
@@ -1031,10 +1442,11 @@ function onField(e) {
   if (!F || !el.dataset || !el.dataset.f) return;
   const k = el.dataset.f;
   if (el.classList.contains('money')) {
-    const dg = el.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 13);
-    el.value = dg ? fmt(Number(dg)) : '';
-    F.v[k] = dg ? Number(dg) : 0;
+    const raw = el.value.replace(/\D/g, ''), dg = raw.replace(/^0+/, '').slice(0, 13);
+    el.value = dg ? fmt(Number(dg)) : (raw && el.dataset.zero ? '0' : '');
+    F.v[k] = dg ? Number(dg) : (el.dataset.zero ? (raw ? 0 : null) : 0);
   } else F.v[k] = el.value;
+  if (F.live) F.live();
   if (F.err && F.err[k]) { delete F.err[k]; const er = $('err-' + k); if (er) er.classList.remove('show'); }
   if (k === 'name' && F.namePh) { const pv = document.querySelector('#shBody .preview .nm'); if (pv) pv.textContent = el.value || F.namePh; }
 }
@@ -1050,6 +1462,7 @@ $('fileIn').addEventListener('change', e => { const f = e.target.files && e.targ
    16. KHỞI ĐỘNG
    ========================================================= */
 document.querySelectorAll('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
+applyTheme();
 Store.load();
 render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
